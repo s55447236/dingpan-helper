@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>盯盘助手</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="hero">
+        <div class="title-block">
+          <h1>盯盘助手</h1>
+          <p class="sub">实时行情 · 价格提醒 · 浏览器通知</p>
+        </div>
+        <div class="actions">
+          <button id="refresh-btn" class="primary">手动刷新</button>
+          <div class="timestamp">上次：<span id="last-updated">--</span></div>
+        </div>
+      </header>
+
+      <section class="card indexes-card">
+        <div class="indexes" id="indexes"></div>
+      </section>
+
+      <section class="card search-card">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="输入股票代码或名称搜索" />
+        </div>
+        <div id="search-results" class="list"></div>
+      </section>
+
+      <section class="card watch-card">
+        <div class="section-title-row">
+          <div class="section-title">我的关注</div>
+          <div class="count">已关注 <span id="stock-count">0</span> 只</div>
+        </div>
+        <div id="watchlist"></div>
+      </section>
+    </div>
+    <div id="status"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

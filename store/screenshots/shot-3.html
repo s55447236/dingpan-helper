@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>盯盘助手截图 3</title>
+    <style>
+      body { margin: 0; font-family: "PingFang SC", Arial, sans-serif; background: #f8fafc; }
+      .frame { width: 1280px; height: 800px; padding: 40px; box-sizing: border-box; background: linear-gradient(135deg,#eff6ff,#f8fafc); }
+      .shell { height: 100%; border-radius: 32px; background: white; box-shadow: 0 18px 60px rgba(15,23,42,.1); padding: 36px; position: relative; overflow: hidden; }
+      .title { font-size: 42px; font-weight: 700; color: #0f172a; }
+      .desc { margin-top: 10px; font-size: 22px; color: #64748b; line-height: 1.7; width: 700px; }
+      .badge-demo { position: absolute; right: 44px; top: 36px; display: flex; align-items: center; gap: 12px; }
+      .ext-icon { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg,#0f172a,#1d4ed8); position: relative; }
+      .ext-icon::after { content: "2"; position: absolute; right: -8px; top: -8px; width: 28px; height: 28px; border-radius: 50%; background: #dc2626; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
+      .badge-text { font-size: 22px; color: #334155; }
+      .panel { margin-top: 46px; display: grid; grid-template-columns: 1.2fr .8fr; gap: 22px; }
+      .left, .right { border: 1px solid #e5e7eb; border-radius: 24px; padding: 24px; }
+      .search { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px; padding: 16px 18px; font-size: 24px; color: #94a3b8; }
+      .stock { margin-top: 18px; border: 1px solid #e5e7eb; border-radius: 18px; padding: 18px; }
+      .name { font-size: 30px; font-weight: 700; color: #0f172a; }
+      .meta { margin-top: 8px; display: flex; gap: 8px; align-items: center; color: #94a3b8; font-size: 18px; }
+      .badge { background: #eef2f7; color: #64748b; padding: 4px 10px; border-radius: 999px; font-size: 14px; }
+      .quote { margin-top: 12px; font-size: 38px; font-weight: 700; color: #dc2626; }
+      .mini { color: #16a34a; font-size: 22px; }
+      .tags { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+      .tag { padding: 8px 14px; border-radius: 999px; background: #f3f4f6; border: 1px solid #e5e7eb; color: #4b5563; font-size: 18px; }
+      .right h3 { margin: 0 0 16px; font-size: 26px; color: #0f172a; }
+      .bullet { margin-bottom: 14px; font-size: 22px; color: #475569; line-height: 1.7; }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="shell">
+        <div class="badge-demo">
+          <div class="ext-icon"></div>
+          <div class="badge-text">右上角角标显示待处理提醒</div>
+        </div>
+        <div class="title">弹窗关闭也能提醒</div>
+        <div class="desc">后台会持续轮询价格。即使没有打开扩展弹窗，价格到达或穿过目标价时，仍可收到通知并在扩展图标看到待处理角标。</div>
+        <div class="panel">
+          <div class="left">
+            <div class="search">搜索股票代码或名称</div>
+            <div class="stock">
+              <div class="name">贵州茅台</div>
+              <div class="meta"><span class="badge">SH</span><span>600519</span></div>
+              <div class="quote">1408.40</div>
+              <div class="mini">-2.53%</div>
+              <div class="tags"><div class="tag">🔔 1400.00</div><div class="tag">🔔 1450.00</div></div>
+            </div>
+          </div>
+          <div class="right">
+            <h3>适合这些场景</h3>
+            <div class="bullet">1. 浏览网页时后台盯盘</div>
+            <div class="bullet">2. 多个目标价分批提醒</div>
+            <div class="bullet">3. 用角标快速知道有未处理提醒</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

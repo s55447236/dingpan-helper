@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>盯盘助手隐私政策</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --line: #e2e8f0;
+        --text: #0f172a;
+        --muted: #475569;
+        --blue: #2563eb;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Helvetica", "Arial", sans-serif;
+        background: linear-gradient(180deg, #eff6ff 0%, var(--bg) 220px);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 48px 20px 72px;
+      }
+      .hero {
+        margin-bottom: 24px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 34px;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+        max-width: 720px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px;
+        margin-bottom: 16px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+      }
+      h2 {
+        margin: 0 0 12px;
+        font-size: 20px;
+      }
+      p, li {
+        color: var(--muted);
+        line-height: 1.8;
+        font-size: 15px;
+      }
+      ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .footer {
+        color: #64748b;
+        font-size: 13px;
+        margin-top: 20px;
+      }
+      a { color: var(--blue); }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero">
+        <div class="badge">Chrome Extension Privacy Policy</div>
+        <h1>盯盘助手隐私政策</h1>
+        <div class="sub">
+          盯盘助手是一款用于监控指数和股票价格，并在价格到达或穿过用户设定目标价时发出浏览器提醒的 Chrome 扩展。
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>1. 扩展的单一用途</h2>
+        <p>
+          盯盘助手的单一用途是在浏览器中帮助用户查看行情、设置目标价提醒，并在价格触发时通过通知和扩展角标提醒用户。
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>2. 我们会处理哪些数据</h2>
+        <ul>
+          <li>用户主动设置的关注股票列表</li>
+          <li>用户主动设置的目标价提醒</li>
+          <li>本地缓存的最近一次行情数据和提醒状态</li>
+        </ul>
+        <p>以上数据主要保存在用户浏览器本地存储中，不用于广告、画像或账号识别。</p>
+      </section>
+
+      <section class="card">
+        <h2>3. 权限用途说明</h2>
+        <ul>
+          <li><strong>storage</strong>：保存关注列表、目标价和本地提醒状态</li>
+          <li><strong>notifications</strong>：在价格触发时发送浏览器通知</li>
+          <li><strong>alarms</strong>：定时轮询行情，保证在弹窗关闭时仍能监控价格</li>
+          <li><strong>searchapi.eastmoney.com</strong>：搜索证券代码和名称</li>
+          <li><strong>push2.eastmoney.com</strong>：获取指数和股票行情</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>4. 数据共享与传输</h2>
+        <p>
+          盯盘助手不会将用户关注列表、目标价提醒或本地状态上传到开发者自建服务器。
+          扩展仅会访问第三方公开行情接口，以获取证券搜索和市场行情数据。
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>5. 联系方式</h2>
+        <p>
+          如果你对本隐私政策有任何问题，请通过你在 Chrome Web Store 开发者资料中公开的联系邮箱与开发者联系。
+        </p>
+      </section>
+
+      <div class="footer">最后更新日期：2026-03-23</div>
+    </main>
+  </body>
+</html>

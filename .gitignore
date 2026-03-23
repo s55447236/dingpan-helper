@@ -1,0 +1,4 @@
+.DS_Store
+.chrome-dev-profile/
+dist/
+*.log
