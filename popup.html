@@ -9,17 +9,23 @@
   <body>
     <div class="container">
       <header class="hero">
-        <div class="title-block">
-          <h1>盯盘助手</h1>
-          <p class="sub">实时行情 · 价格提醒 · 浏览器通知</p>
+        <div class="hero-top">
+          <div class="title-mode-switch" id="mode-switch">
+            <button class="title-mode-btn active" data-mode="watch">盯盘助手</button>
+            <button class="title-mode-btn title-mode-pray" data-mode="pray">
+              <span>求神祈福</span>
+              <span class="title-mode-badge">旺</span>
+            </button>
+          </div>
+          <button id="refresh-btn" class="refresh-btn">手动刷新</button>
         </div>
-        <div class="actions">
-          <button id="refresh-btn" class="primary">手动刷新</button>
+        <div class="hero-meta">
+          <p class="sub" id="hero-sub">实时行情 · 价格提醒 · 浏览器通知</p>
           <div class="timestamp">上次：<span id="last-updated">--</span></div>
         </div>
       </header>
 
-      <section class="card indexes-card">
+      <section class="card indexes-card" id="indexes-card">
         <div class="indexes" id="indexes"></div>
       </section>
 
@@ -31,15 +37,67 @@
         <div id="search-results" class="list"></div>
       </section>
 
-      <section class="card watch-card">
+      <section class="card watch-card" id="watch-card">
         <div class="section-title-row">
           <div class="section-title">我的关注</div>
           <div class="count">已关注 <span id="stock-count">0</span> 只</div>
         </div>
         <div id="watchlist"></div>
       </section>
+
+      <section class="card pray-card hidden" id="pray-card">
+        <div class="deity-carousel">
+          <button class="deity-arrow" id="deity-prev" aria-label="上一个神位">‹</button>
+          <div class="deity-name" id="deity-name">财神爷</div>
+          <button class="deity-arrow" id="deity-next" aria-label="上一个神位">›</button>
+        </div>
+        <div class="altar-card">
+          <div class="altar-stage">
+            <div class="deity-image-wrap">
+              <img id="deity-image" class="deity-image" src="assets/deity-caishen.svg" alt="财神爷" />
+            </div>
+            <div class="altar-copy altar-copy-centered" id="deity-copy">愿今日红红火火，账户长虹。</div>
+            <div class="altar-fruits-row" id="altar-fruits-row">
+              <button class="altar-slot" data-slot-index="0">+</button>
+              <button class="altar-slot" data-slot-index="1">+</button>
+              <button class="altar-slot" data-slot-index="2">+</button>
+            </div>
+            <div class="pray-search-overlay hidden" id="pray-search-overlay">
+              <div class="pray-search-panel">
+                <div class="pray-search-head">
+                  <div class="pray-search-title">搜索股票上供</div>
+                  <button class="pray-search-close" id="close-pray-search" title="关闭">×</button>
+                </div>
+                <div class="pray-search-box">
+                  <span class="search-icon">🔍</span>
+                  <input id="pray-search-input" type="text" placeholder="输入股票代码或名称" />
+                </div>
+                <div class="pray-search-results" id="pray-search-results"></div>
+              </div>
+            </div>
+            <button id="incense-btn" class="incense-btn incense-btn-floating">上香</button>
+            <img class="altar-burner-image" src="assets/incense-burner.png" alt="香炉" />
+            <div class="incense-actions">
+              <div class="incense-meta">累计香火：<span id="incense-count">0</span> 次</div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
+
     <div id="status"></div>
+
+    <div class="modal hidden" id="qr-modal">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <div class="modal-panel">
+        <button class="modal-close" id="close-qr-modal" title="关闭">×</button>
+        <div class="modal-title">供位已满</div>
+        <div class="modal-copy">当前最多只能上供三只股票。若要继续增加，请扫描开发者二维码。</div>
+        <img class="qr-image" src="assets/developer-qr.svg" alt="开发者二维码" />
+        <div class="modal-footnote">当前二维码为占位图，后续可替换为真实开发者二维码。</div>
+      </div>
+    </div>
+
     <script src="popup.js"></script>
   </body>
 </html>

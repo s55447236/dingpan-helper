@@ -1,16 +1,88 @@
 const INDEX_SYMBOLS = ["000001.SS", "399001.SZ", "399006.SZ"];
+const DEITY_KEYS = ["caishen", "guangong", "milefo"];
+const DEITIES = {
+  caishen: {
+    name: "财神爷",
+    copy: "愿今日红红火火，账户长虹。",
+    image: "assets/caishen.png",
+  },
+  guangong: {
+    name: "关公",
+    copy: "愿持仓稳如山，关键位不破。",
+    image: "assets/guanyu.png",
+  },
+  milefo: {
+    name: "弥勒佛",
+    copy: "愿心态放松，回撤不慌。",
+    image: "assets/milefo.png",
+  },
+};
+const INCENSE_BLESSINGS = [
+  "愿今日红红火火，账户长虹。",
+  "愿所盯皆上涨，所买皆有回响。",
+  "愿开盘有喜，收盘更喜。",
+  "愿今天一路飘红，持仓节节高。",
+  "愿资金如潮水，净值步步升。",
+  "愿回撤收敛，利润扩张。",
+  "愿关键位不破，强势股不落。",
+  "愿低吸有肉，高抛有度。",
+  "愿盘中少惊吓，尾盘多惊喜。",
+  "愿热点常在，自选常红。",
+  "愿趋势向上，账户向阳。",
+  "愿大盘稳住，个股起舞。",
+  "愿今日不追高，也能吃大肉。",
+  "愿红柱连连，绿盘远远。",
+  "愿止盈从容，止损果断，结果都好。",
+  "愿每次上香，都换一次新高。",
+  "愿龙头不倒，仓位不慌。",
+  "愿量价齐升，收益齐来。",
+  "愿东风常在，持仓常红。",
+  "愿早盘埋伏，午后开花。",
+  "愿买点更准，卖点更稳。",
+  "愿浮亏退散，盈利上岸。",
+  "愿今日看盘不白看，明日收益有交代。",
+  "愿行情配合，耐心有报。",
+  "愿顺势而为，账户生辉。",
+  "愿消息面平静，K线面漂亮。",
+  "愿每次抄底都不抄在半山腰。",
+  "愿主升浪常来，震荡市少来。",
+];
+
 const searchInput = document.getElementById("search-input");
 const searchResultsEl = document.getElementById("search-results");
 const watchlistEl = document.getElementById("watchlist");
 const indexesEl = document.getElementById("indexes");
 const lastUpdatedEl = document.getElementById("last-updated");
 const stockCountEl = document.getElementById("stock-count");
+const heroSubEl = document.getElementById("hero-sub");
+const indexesCardEl = document.getElementById("indexes-card");
+const searchCardEl = document.querySelector(".search-card");
+const watchCardEl = document.getElementById("watch-card");
+const prayCardEl = document.getElementById("pray-card");
+const deityNameEl = document.getElementById("deity-name");
+const deityCopyEl = document.getElementById("deity-copy");
+const deityImageEl = document.getElementById("deity-image");
+const incenseCountEl = document.getElementById("incense-count");
+const qrModalEl = document.getElementById("qr-modal");
+const altarFruitsRowEl = document.getElementById("altar-fruits-row");
+const praySearchOverlayEl = document.getElementById("pray-search-overlay");
+const praySearchInputEl = document.getElementById("pray-search-input");
+const praySearchResultsEl = document.getElementById("pray-search-results");
 
 const state = {
   watchlist: [],
   lastQuotes: {},
   draftTargets: {},
   activePopoverSymbol: null,
+  praySearchDraft: "",
+  activePraySlotIndex: null,
+  prayDisplayedCopy: null,
+  mode: "watch",
+  pray: {
+    deity: "caishen",
+    incenseCount: 0,
+    fruits: [],
+  },
 };
 
 const BELL_ICON = `
@@ -59,6 +131,43 @@ function normalizeWatchlist(rawWatchlist) {
     ...item,
     alerts: normalizeAlerts(item.alerts, item.alertPrice, item.alertPrices),
   }));
+}
+
+function normalizePrayState(raw = {}) {
+  const source = Array.isArray(raw.fruits) ? raw.fruits.slice(0, 3) : [];
+  const normalized = Array.from({ length: 3 }, (_, index) => {
+    const item = source[index];
+    if (!item?.symbol) return null;
+    return {
+      symbol: item.symbol,
+      name: item.name || item.symbol,
+      secid: item.secid || "",
+    };
+  });
+  return {
+    deity: DEITIES[raw.deity] ? raw.deity : "caishen",
+    incenseCount: Number.isFinite(raw.incenseCount) ? raw.incenseCount : 0,
+    fruits: normalized,
+  };
+}
+
+function createDefaultPrayFruits() {
+  if (state.watchlist.length) {
+    return Array.from({ length: 3 }, (_, index) => {
+      const item = state.watchlist[index];
+      if (!item) return null;
+      return {
+        symbol: item.symbol,
+        name: item.name || item.symbol,
+        secid: item.secid || "",
+      };
+    });
+  }
+  return [
+    { symbol: "000001.SS", name: "上证指数", secid: "1.000001" },
+    { symbol: "399001.SZ", name: "深证成指", secid: "0.399001" },
+    { symbol: "399006.SZ", name: "创业板指", secid: "0.399006" },
+  ];
 }
 
 function getMarketLabel(symbol, secid = "") {
@@ -113,14 +222,23 @@ function isAlertHit(currentPrice, targetPrice) {
 }
 
 async function loadState() {
-  const { watchlist = [], lastQuotes = {}, lastUpdated = null } =
-    await chrome.storage.local.get({
-      watchlist: [],
-      lastQuotes: {},
-      lastUpdated: null,
-    });
+  const {
+    watchlist = [],
+    lastQuotes = {},
+    lastUpdated = null,
+    popupMode = "watch",
+    prayState = {},
+  } = await chrome.storage.local.get({
+    watchlist: [],
+    lastQuotes: {},
+    lastUpdated: null,
+    popupMode: "watch",
+    prayState: {},
+  });
   state.watchlist = normalizeWatchlist(watchlist);
   state.lastQuotes = lastQuotes;
+  state.mode = popupMode === "pray" ? "pray" : "watch";
+  state.pray = normalizePrayState(prayState);
   if (lastUpdated) {
     lastUpdatedEl.textContent = new Date(lastUpdated).toLocaleTimeString();
   }
@@ -130,8 +248,47 @@ async function saveWatchlist() {
   await chrome.storage.local.set({ watchlist: state.watchlist });
 }
 
+async function saveMode() {
+  await chrome.storage.local.set({ popupMode: state.mode });
+}
+
+async function savePrayState() {
+  await chrome.storage.local.set({ prayState: state.pray });
+}
+
 function updateStockCount() {
   stockCountEl.textContent = String(state.watchlist.length);
+}
+
+function updateFruitCount() {
+  const fruitCountEl = document.getElementById("fruit-count");
+  if (fruitCountEl) {
+    fruitCountEl.textContent = String(state.pray.fruits.filter(Boolean).length);
+  }
+}
+
+function getRandomBlessing() {
+  return INCENSE_BLESSINGS[Math.floor(Math.random() * INCENSE_BLESSINGS.length)];
+}
+
+function rotateDeity(step) {
+  const currentIndex = DEITY_KEYS.indexOf(state.pray.deity);
+  const nextIndex = (currentIndex + step + DEITY_KEYS.length) % DEITY_KEYS.length;
+  state.pray.deity = DEITY_KEYS[nextIndex];
+  state.prayDisplayedCopy = null;
+}
+
+let blessingAnimationTimer = null;
+function animateBlessingText(nextText) {
+  clearTimeout(blessingAnimationTimer);
+  deityCopyEl.classList.remove("smoke-out", "smoke-in");
+  void deityCopyEl.offsetWidth;
+  deityCopyEl.classList.add("smoke-out");
+  blessingAnimationTimer = setTimeout(() => {
+    deityCopyEl.textContent = nextText;
+    deityCopyEl.classList.remove("smoke-out");
+    deityCopyEl.classList.add("smoke-in");
+  }, 260);
 }
 
 function renderIndexes(quotes) {
@@ -226,6 +383,69 @@ function renderWatchlist(quotes) {
   });
 }
 
+function renderDeityDisplay() {
+  deityNameEl.textContent = DEITIES[state.pray.deity].name;
+  deityCopyEl.textContent = state.prayDisplayedCopy || DEITIES[state.pray.deity].copy;
+  deityImageEl.src = DEITIES[state.pray.deity].image;
+  deityImageEl.alt = DEITIES[state.pray.deity].name;
+  incenseCountEl.textContent = String(state.pray.incenseCount);
+}
+
+function renderAltarFruitSlots() {
+  altarFruitsRowEl.innerHTML = state.pray.fruits
+    .map((item, index) => {
+      if (!item) {
+        return `<button class="altar-slot" data-slot-index="${index}">+</button>`;
+      }
+      const quote = state.lastQuotes[item.symbol];
+      const market = getMarketLabel(item.symbol, item.secid);
+      const price = quote?.price;
+      const changePercent = quote?.changePercent;
+      return `<div class="altar-slot filled" data-slot-index="${index}">
+        <div class="altar-slot-name">${item.name || item.symbol}</div>
+        <div class="altar-slot-topline">
+          <span class="altar-slot-market">${market}</span>
+          <span class="altar-slot-symbol">${item.symbol}</span>
+        </div>
+        <div class="altar-slot-quote ${changeClass(changePercent)}">
+          <span>${
+            price === null || price === undefined
+              ? "--"
+              : Number.isInteger(price)
+                ? price.toFixed(0)
+                : price.toFixed(2)
+          }</span>
+          <span>${formatPercent(changePercent)}</span>
+        </div>
+        <button class="altar-slot-remove" data-slot-index="${index}" title="移出">×</button>
+      </div>`;
+    })
+    .join("");
+}
+
+function renderMode() {
+  document.querySelectorAll(".title-mode-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === state.mode);
+  });
+  const inPrayMode = state.mode === "pray";
+  indexesCardEl.classList.toggle("hidden", inPrayMode);
+  searchCardEl.classList.toggle("hidden", inPrayMode);
+  watchCardEl.classList.toggle("hidden", inPrayMode);
+  prayCardEl.classList.toggle("hidden", !inPrayMode);
+  heroSubEl.textContent = inPrayMode
+    ? "求神模式 · 上香祈福 · 三个供位"
+    : "实时行情 · 价格提醒 · 浏览器通知";
+  searchInput.placeholder = inPrayMode
+    ? "输入股票代码或名称，加入供位"
+    : "输入股票代码或名称搜索";
+}
+
+function renderPrayMode() {
+  renderDeityDisplay();
+  renderAltarFruitSlots();
+  updateFruitCount();
+}
+
 async function refreshQuotes(showToast = false) {
   try {
     const res = await chrome.runtime.sendMessage({ type: "refreshQuotes" });
@@ -234,6 +454,7 @@ async function refreshQuotes(showToast = false) {
       lastUpdatedEl.textContent = new Date().toLocaleTimeString();
       renderIndexes(state.lastQuotes);
       renderWatchlist(state.lastQuotes);
+      renderPrayMode();
       if (showToast) showStatus("已刷新");
     } else {
       throw new Error(res?.error || "刷新失败");
@@ -248,6 +469,30 @@ function showStatus(text) {
   bar.textContent = text;
   bar.classList.add("visible");
   setTimeout(() => bar.classList.remove("visible"), 1500);
+}
+
+function openQrModal() {
+  qrModalEl.classList.remove("hidden");
+}
+
+function closeQrModal() {
+  qrModalEl.classList.add("hidden");
+}
+
+function openPraySearch(slotIndex) {
+  state.activePraySlotIndex = slotIndex;
+  praySearchOverlayEl.classList.remove("hidden");
+  praySearchInputEl.value = state.praySearchDraft;
+  praySearchInputEl.focus();
+  renderPraySearchResults([]);
+}
+
+function closePraySearch() {
+  praySearchOverlayEl.classList.add("hidden");
+  state.praySearchDraft = "";
+  state.activePraySlotIndex = null;
+  praySearchInputEl.value = "";
+  praySearchResultsEl.innerHTML = "";
 }
 
 let searchTimer = null;
@@ -271,6 +516,7 @@ function renderSearchResults(list) {
   }
   list.forEach((item) => {
     const watched = state.watchlist.some((stock) => stock.symbol === item.symbol);
+    const prayed = state.pray.fruits.some((stock) => stock?.symbol === item.symbol);
     const row = document.createElement("div");
     row.className = "row search-row";
     row.innerHTML = `
@@ -282,14 +528,50 @@ function renderSearchResults(list) {
         </div>
       </div>
       ${
-        watched
-          ? '<span class="search-status followed">已关注</span>'
-          : `<button class="add" data-symbol="${item.symbol}" data-name="${
-              item.shortname || item.longname || ""
-            }" data-secid="${item.secid || ""}">关注</button>`
+        state.mode === "pray"
+          ? prayed
+            ? '<span class="search-status followed">✓ 已上供</span>'
+            : `<button class="add" data-symbol="${item.symbol}" data-name="${
+                item.shortname || item.longname || ""
+              }" data-secid="${item.secid || ""}" data-mode="pray">上供</button>`
+          : watched
+            ? '<span class="search-status followed">✓ 已关注</span>'
+            : `<button class="add" data-symbol="${item.symbol}" data-name="${
+                item.shortname || item.longname || ""
+              }" data-secid="${item.secid || ""}" data-mode="watch">关注</button>`
       }
     `;
     searchResultsEl.appendChild(row);
+  });
+}
+
+function renderPraySearchResults(list) {
+  praySearchResultsEl.innerHTML = "";
+  if (!list.length) {
+    praySearchResultsEl.innerHTML = '<div class="empty">输入代码或名称后即可上供</div>';
+    return;
+  }
+  list.forEach((item) => {
+    const prayed = state.pray.fruits.some((stock) => stock?.symbol === item.symbol);
+    const row = document.createElement("div");
+    row.className = "pray-result-row";
+    row.innerHTML = `
+      <div class="pray-result-main">
+        <div class="pray-result-name">${item.shortname || item.longname || item.symbol}</div>
+        <div class="symbol-row">
+          <div class="market-badge">${getMarketLabel(item.symbol, item.secid)}</div>
+          <div class="symbol">${item.symbol}</div>
+        </div>
+      </div>
+      ${
+        prayed
+          ? '<span class="search-status followed">✓ 已上供</span>'
+          : `<button class="add" data-symbol="${item.symbol}" data-name="${
+              item.shortname || item.longname || ""
+            }" data-secid="${item.secid || ""}" data-mode="pray-overlay">上供</button>`
+      }
+    `;
+    praySearchResultsEl.appendChild(row);
   });
 }
 
@@ -313,6 +595,26 @@ async function searchStock(keyword) {
   }
 }
 
+async function searchPrayStock(keyword) {
+  try {
+    const url = `https://searchapi.eastmoney.com/api/suggest/get?input=${encodeURIComponent(
+      keyword
+    )}&type=14&token=D43BF722C8E33BDC906FB84D85E326E8&count=8`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("搜索失败");
+    const data = await resp.json();
+    const quotes = (data?.QuotationCodeTable?.Data || []).map((item) => ({
+      symbol: item.Code,
+      shortname: item.Name,
+      longname: item.Name,
+      secid: item.QuoteID,
+    }));
+    renderPraySearchResults(quotes);
+  } catch (err) {
+    praySearchResultsEl.innerHTML = `<div class="empty">${err.message || "搜索异常"}</div>`;
+  }
+}
+
 function findStock(symbol) {
   return state.watchlist.find((item) => item.symbol === symbol);
 }
@@ -332,6 +634,7 @@ function bindWatchlistEvents() {
       if (state.activePopoverSymbol === symbol) state.activePopoverSymbol = null;
       await saveWatchlist();
       renderWatchlist(state.lastQuotes);
+      renderSearchResultsFromInput();
       refreshQuotes();
       return;
     }
@@ -400,18 +703,88 @@ function bindWatchlistEvents() {
     if (!target.matches("input[data-type='new-target']")) return;
     if (e.key !== "Enter") return;
     e.preventDefault();
-    const button = watchlistEl.querySelector(`button.confirm-target[data-symbol="${target.dataset.symbol}"]`);
+    const button = watchlistEl.querySelector(
+      `button.confirm-target[data-symbol="${target.dataset.symbol}"]`
+    );
     if (button) button.click();
+  });
+}
+
+function bindPrayEvents() {
+  prayCardEl.addEventListener("click", async (e) => {
+    const incenseBtn = e.target.closest("#incense-btn");
+    const altarSlotBtn = e.target.closest(".altar-slot");
+    const altarRemoveBtn = e.target.closest(".altar-slot-remove");
+    const prevBtn = e.target.closest("#deity-prev");
+    const nextBtn = e.target.closest("#deity-next");
+
+    if (prevBtn) {
+      rotateDeity(-1);
+      await savePrayState();
+      renderPrayMode();
+      return;
+    }
+
+    if (nextBtn) {
+      rotateDeity(1);
+      await savePrayState();
+      renderPrayMode();
+      return;
+    }
+
+    if (incenseBtn) {
+      state.pray.incenseCount += 1;
+      const blessing = getRandomBlessing();
+      state.prayDisplayedCopy = blessing;
+      await savePrayState();
+      incenseCountEl.textContent = String(state.pray.incenseCount);
+      animateBlessingText(blessing);
+      return;
+    }
+
+    if (altarSlotBtn && !altarSlotBtn.classList.contains("filled")) {
+      openPraySearch(Number(altarSlotBtn.dataset.slotIndex));
+      return;
+    }
+
+    if (altarRemoveBtn) {
+      const index = Number(altarRemoveBtn.dataset.slotIndex);
+      state.pray.fruits[index] = null;
+      await savePrayState();
+      renderPrayMode();
+      renderPraySearchResults([]);
+    }
   });
 }
 
 function bindSearchResultsClick() {
   searchResultsEl.addEventListener("click", async (e) => {
-    const target = e.target;
-    if (!target.matches("button.add")) return;
-    const symbol = target.dataset.symbol;
-    const name = target.dataset.name || symbol;
-    const secid = target.dataset.secid || null;
+    const button = e.target.closest("button.add");
+    if (!button) return;
+    const symbol = button.dataset.symbol;
+    const name = button.dataset.name || symbol;
+    const secid = button.dataset.secid || null;
+    const mode = button.dataset.mode;
+
+    if (mode === "pray") {
+      if (state.pray.fruits.some((s) => s?.symbol === symbol)) {
+        showStatus("这只已经在供位上");
+        return;
+      }
+      const emptyIndex = state.pray.fruits.findIndex((item) => !item);
+      if (emptyIndex === -1) {
+        openQrModal();
+        return;
+      }
+      state.pray.fruits[emptyIndex] = { symbol, name, secid };
+      await savePrayState();
+      renderPrayMode();
+      searchInput.value = "";
+      searchResultsEl.innerHTML = "";
+      showStatus("已上供");
+      return;
+    }
+
     if (state.watchlist.some((s) => s.symbol === symbol)) {
       showStatus("已在关注列表");
       return;
@@ -430,6 +803,76 @@ function bindSearchResultsClick() {
     refreshQuotes(true);
     showStatus("已添加关注");
   });
+}
+
+function bindPraySearch() {
+  let praySearchTimer = null;
+
+  praySearchInputEl.addEventListener("input", () => {
+    clearTimeout(praySearchTimer);
+    const value = praySearchInputEl.value.trim();
+    state.praySearchDraft = value;
+    if (!value) {
+      renderPraySearchResults([]);
+      return;
+    }
+    praySearchTimer = setTimeout(() => searchPrayStock(value), 250);
+  });
+
+  praySearchResultsEl.addEventListener("click", async (e) => {
+    const button = e.target.closest("button.add");
+    if (!button) return;
+    const symbol = button.dataset.symbol;
+    const name = button.dataset.name || symbol;
+    const secid = button.dataset.secid || null;
+    if (state.pray.fruits.some((s) => s?.symbol === symbol)) {
+      showStatus("这只已经在供位上");
+      return;
+    }
+    if (state.pray.fruits.filter(Boolean).length >= 3 || state.activePraySlotIndex === null) {
+      openQrModal();
+      return;
+    }
+    state.pray.fruits[state.activePraySlotIndex] = { symbol, name, secid };
+    await savePrayState();
+    renderPrayMode();
+    closePraySearch();
+    showStatus("已上供");
+  });
+}
+
+function bindModeSwitch() {
+  document.getElementById("mode-switch").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".title-mode-btn");
+    if (!btn) return;
+    state.mode = btn.dataset.mode;
+    await saveMode();
+    renderMode();
+    renderSearchResultsFromInput();
+  });
+}
+
+function bindModal() {
+  qrModalEl.addEventListener("click", (e) => {
+    if (e.target.dataset.closeModal === "true" || e.target.id === "close-qr-modal") {
+      closeQrModal();
+    }
+  });
+
+  praySearchOverlayEl.addEventListener("click", (e) => {
+    if (e.target === praySearchOverlayEl || e.target.id === "close-pray-search") {
+      closePraySearch();
+    }
+  });
+}
+
+function renderSearchResultsFromInput() {
+  const value = searchInput.value.trim();
+  if (!value) {
+    searchResultsEl.innerHTML = "";
+    return;
+  }
+  searchStock(value);
 }
 
 async function ensureNotificationPermission() {
@@ -466,22 +909,39 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     state.lastQuotes = changes.lastQuotes.newValue || {};
     renderIndexes(state.lastQuotes);
     renderWatchlist(state.lastQuotes);
+    renderPrayMode();
   }
   if (changes.lastUpdated?.newValue) {
     lastUpdatedEl.textContent = new Date(changes.lastUpdated.newValue).toLocaleTimeString();
+  }
+  if (changes.prayState) {
+    state.pray = normalizePrayState(changes.prayState.newValue || {});
+    renderPrayMode();
+    renderSearchResultsFromInput();
   }
 });
 
 async function init() {
   await loadState();
+  if (!state.pray.fruits.some(Boolean)) {
+    state.pray.fruits = createDefaultPrayFruits();
+    await savePrayState();
+  }
   chrome.runtime.sendMessage({ type: "clearBadge" }).catch(() => {});
+  renderMode();
   renderIndexes(state.lastQuotes);
   renderWatchlist(state.lastQuotes);
+  renderPrayMode();
+  bindModeSwitch();
   bindSearch();
   bindSearchResultsClick();
   bindWatchlistEvents();
+  bindPrayEvents();
+  bindPraySearch();
+  bindModal();
   bindActions();
   refreshQuotes();
+  renderSearchResultsFromInput();
 }
 
 document.addEventListener("DOMContentLoaded", init);
