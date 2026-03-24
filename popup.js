@@ -72,6 +72,7 @@ const praySearchResultsEl = document.getElementById("pray-search-results");
 const state = {
   watchlist: [],
   lastQuotes: {},
+  prayQuotes: {},
   draftTargets: {},
   activePopoverSymbol: null,
   praySearchDraft: "",
@@ -207,6 +208,13 @@ function formatPercent(val) {
 function formatPrice(val) {
   if (val === null || val === undefined || Number.isNaN(val)) return "--";
   return Number(val).toFixed(2);
+}
+
+function normalizePrice(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  if (Number.isNaN(num)) return null;
+  return Number(num.toFixed(2));
 }
 
 function changeClass(val) {
@@ -391,13 +399,53 @@ function renderDeityDisplay() {
   incenseCountEl.textContent = String(state.pray.incenseCount);
 }
 
+async function fetchJson(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`请求失败: ${resp.status}`);
+  return resp.json();
+}
+
+async function fetchPrayQuotes() {
+  const secids = state.pray.fruits
+    .filter(Boolean)
+    .map((item) => item.secid)
+    .filter(Boolean);
+
+  if (!secids.length) {
+    state.prayQuotes = {};
+    renderPrayMode();
+    return {};
+  }
+
+  const url = `https://push2.eastmoney.com/api/qt/ulist/get?secids=${encodeURIComponent(
+    secids.join(",")
+  )}&fields=f12,f14,f2,f3,f4&ut=b2884a393a59ad64002292a3e90d46a5&fltt=2&invt=2&np=1&pi=0&pz=${secids.length}`;
+  const data = await fetchJson(url);
+  const result = data?.data?.diff || [];
+  const mapped = {};
+
+  result.forEach((item) => {
+    mapped[item.f12] = {
+      symbol: item.f12,
+      name: item.f14 || item.f12,
+      price: normalizePrice(item.f2),
+      change: normalizePrice(item.f4),
+      changePercent: normalizePrice(item.f3),
+    };
+  });
+
+  state.prayQuotes = mapped;
+  renderPrayMode();
+  return mapped;
+}
+
 function renderAltarFruitSlots() {
   altarFruitsRowEl.innerHTML = state.pray.fruits
     .map((item, index) => {
       if (!item) {
         return `<button class="altar-slot" data-slot-index="${index}">+</button>`;
       }
-      const quote = state.lastQuotes[item.symbol];
+      const quote = state.prayQuotes[item.symbol] || state.lastQuotes[item.symbol];
       const market = getMarketLabel(item.symbol, item.secid);
       const price = quote?.price;
       const changePercent = quote?.changePercent;
@@ -447,20 +495,41 @@ function renderPrayMode() {
 }
 
 async function refreshQuotes(showToast = false) {
-  try {
-    const res = await chrome.runtime.sendMessage({ type: "refreshQuotes" });
+  const [watchResult, prayResult] = await Promise.allSettled([
+    chrome.runtime.sendMessage({ type: "refreshQuotes" }),
+    fetchPrayQuotes(),
+  ]);
+  let refreshed = false;
+
+  if (watchResult.status === "fulfilled") {
+    const res = watchResult.value;
     if (res?.ok && res.quotes) {
       state.lastQuotes = res.quotes;
       lastUpdatedEl.textContent = new Date().toLocaleTimeString();
       renderIndexes(state.lastQuotes);
       renderWatchlist(state.lastQuotes);
-      renderPrayMode();
-      if (showToast) showStatus("已刷新");
-    } else {
-      throw new Error(res?.error || "刷新失败");
+      refreshed = true;
     }
-  } catch (err) {
-    showStatus(err.message || "网络异常");
+  }
+
+  if (prayResult.status === "fulfilled") {
+    refreshed = true;
+  }
+
+  renderPrayMode();
+
+  if (!showToast) return;
+  if (!refreshed) {
+    showStatus("网络异常");
+  } else if (
+    watchResult.status === "rejected" ||
+    (watchResult.status === "fulfilled" && (!watchResult.value?.ok || !watchResult.value?.quotes))
+  ) {
+    showStatus("盯盘页刷新失败，供位行情已单独更新");
+  } else if (prayResult.status === "rejected") {
+    showStatus("盯盘页已刷新，供位行情稍后重试");
+  } else {
+    showStatus("已刷新");
   }
 }
 
@@ -502,14 +571,17 @@ function bindSearch() {
     const val = searchInput.value.trim();
     if (!val) {
       searchResultsEl.innerHTML = "";
+      searchCardEl.classList.remove("has-results");
       return;
     }
+    searchCardEl.classList.add("has-results");
     searchTimer = setTimeout(() => searchStock(val), 350);
   });
 }
 
 function renderSearchResults(list) {
   searchResultsEl.innerHTML = "";
+  searchCardEl.classList.add("has-results");
   if (!list.length) {
     searchResultsEl.innerHTML = '<div class="empty">暂无结果</div>';
     return;
@@ -591,6 +663,7 @@ async function searchStock(keyword) {
     }));
     renderSearchResults(quotes);
   } catch (err) {
+    searchCardEl.classList.add("has-results");
     searchResultsEl.innerHTML = `<div class="empty">${err.message || "搜索异常"}</div>`;
   }
 }
@@ -751,6 +824,7 @@ function bindPrayEvents() {
       const index = Number(altarRemoveBtn.dataset.slotIndex);
       state.pray.fruits[index] = null;
       await savePrayState();
+      await fetchPrayQuotes().catch(() => {});
       renderPrayMode();
       renderPraySearchResults([]);
     }
@@ -778,9 +852,11 @@ function bindSearchResultsClick() {
       }
       state.pray.fruits[emptyIndex] = { symbol, name, secid };
       await savePrayState();
+      await fetchPrayQuotes().catch(() => {});
       renderPrayMode();
       searchInput.value = "";
       searchResultsEl.innerHTML = "";
+      searchCardEl.classList.remove("has-results");
       showStatus("已上供");
       return;
     }
@@ -800,6 +876,7 @@ function bindSearchResultsClick() {
     renderWatchlist(state.lastQuotes);
     searchInput.value = "";
     searchResultsEl.innerHTML = "";
+    searchCardEl.classList.remove("has-results");
     refreshQuotes(true);
     showStatus("已添加关注");
   });
@@ -835,6 +912,7 @@ function bindPraySearch() {
     }
     state.pray.fruits[state.activePraySlotIndex] = { symbol, name, secid };
     await savePrayState();
+    await fetchPrayQuotes().catch(() => {});
     renderPrayMode();
     closePraySearch();
     showStatus("已上供");
@@ -870,8 +948,10 @@ function renderSearchResultsFromInput() {
   const value = searchInput.value.trim();
   if (!value) {
     searchResultsEl.innerHTML = "";
+    searchCardEl.classList.remove("has-results");
     return;
   }
+  searchCardEl.classList.add("has-results");
   searchStock(value);
 }
 
@@ -916,6 +996,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
   if (changes.prayState) {
     state.pray = normalizePrayState(changes.prayState.newValue || {});
+    fetchPrayQuotes().catch(() => {});
     renderPrayMode();
     renderSearchResultsFromInput();
   }
@@ -940,6 +1021,7 @@ async function init() {
   bindPraySearch();
   bindModal();
   bindActions();
+  await fetchPrayQuotes().catch(() => {});
   refreshQuotes();
   renderSearchResultsFromInput();
 }
