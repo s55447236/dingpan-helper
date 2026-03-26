@@ -1,13 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="盯盘助手">
-  <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#1d4ed8" />
-    </linearGradient>
-  </defs>
-  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg)" />
-  <path d="M30 85 L49 66 L62 76 L87 46 L98 56" fill="none" stroke="#f8fafc" stroke-linecap="round" stroke-linejoin="round" stroke-width="10" />
-  <circle cx="49" cy="66" r="5" fill="#f8fafc" />
-  <circle cx="87" cy="46" r="5" fill="#f8fafc" />
-  <path d="M32 98 H96" stroke="#93c5fd" stroke-linecap="round" stroke-width="6" />
+<svg width="112" height="112" viewBox="0 0 112 112" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M84 0H28C12.536 0 0 12.536 0 28V84C0 99.464 12.536 112 28 112H84C99.464 112 112 99.464 112 84V28C112 12.536 99.464 0 84 0Z" fill="url(#paint0_linear_20_22)"/>
+<path d="M22 77L41 58L54 68L79 38L90 48" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M41 63C43.7614 63 46 60.7614 46 58C46 55.2386 43.7614 53 41 53C38.2386 53 36 55.2386 36 58C36 60.7614 38.2386 63 41 63Z" fill="#F8FAFC"/>
+<path d="M79 43C81.7614 43 84 40.7614 84 38C84 35.2386 81.7614 33 79 33C76.2386 33 74 35.2386 74 38C74 40.7614 76.2386 43 79 43Z" fill="#F8FAFC"/>
+<path d="M24 90H88H24Z" fill="black"/>
+<path d="M24 90H88" stroke="#FCFDFF" stroke-width="6" stroke-linecap="round"/>
+<defs>
+<linearGradient id="paint0_linear_20_22" x1="100" y1="108" x2="49" y2="8.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#E73939"/>
+<stop offset="1" stop-color="#7E0606"/>
+</linearGradient>
+</defs>
 </svg>

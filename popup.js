@@ -5,16 +5,19 @@ const DEITIES = {
     name: "财神爷",
     copy: "愿今日红红火火，账户长虹。",
     image: "assets/caishen.png",
+    video: "assets/caishen.mp4",
   },
   guangong: {
     name: "关公",
     copy: "愿持仓稳如山，关键位不破。",
     image: "assets/guanyu.png",
+    video: "assets/guanyu.mp4",
   },
   milefo: {
     name: "弥勒佛",
     copy: "愿心态放松，回撤不慌。",
     image: "assets/milefo.png",
+    video: "assets/milefo.mp4",
   },
 };
 const INCENSE_BLESSINGS = [
@@ -61,9 +64,10 @@ const watchCardEl = document.getElementById("watch-card");
 const prayCardEl = document.getElementById("pray-card");
 const deityNameEl = document.getElementById("deity-name");
 const deityCopyEl = document.getElementById("deity-copy");
-const deityImageEl = document.getElementById("deity-image");
+const deityVideoEl = document.getElementById("deity-video");
 const incenseCountEl = document.getElementById("incense-count");
 const qrModalEl = document.getElementById("qr-modal");
+const infoModalEl = document.getElementById("info-modal");
 const altarFruitsRowEl = document.getElementById("altar-fruits-row");
 const praySearchOverlayEl = document.getElementById("pray-search-overlay");
 const praySearchInputEl = document.getElementById("pray-search-input");
@@ -85,6 +89,7 @@ const state = {
     fruits: [],
   },
 };
+let isDeityVideoPlaying = false;
 
 const BELL_ICON = `
   <svg class="bell-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -153,22 +158,7 @@ function normalizePrayState(raw = {}) {
 }
 
 function createDefaultPrayFruits() {
-  if (state.watchlist.length) {
-    return Array.from({ length: 3 }, (_, index) => {
-      const item = state.watchlist[index];
-      if (!item) return null;
-      return {
-        symbol: item.symbol,
-        name: item.name || item.symbol,
-        secid: item.secid || "",
-      };
-    });
-  }
-  return [
-    { symbol: "000001.SS", name: "上证指数", secid: "1.000001" },
-    { symbol: "399001.SZ", name: "深证成指", secid: "0.399001" },
-    { symbol: "399006.SZ", name: "创业板指", secid: "0.399006" },
-  ];
+  return [null, null, null];
 }
 
 function getMarketLabel(symbol, secid = "") {
@@ -284,6 +274,7 @@ function rotateDeity(step) {
   const nextIndex = (currentIndex + step + DEITY_KEYS.length) % DEITY_KEYS.length;
   state.pray.deity = DEITY_KEYS[nextIndex];
   state.prayDisplayedCopy = null;
+  stopDeityVideo();
 }
 
 let blessingAnimationTimer = null;
@@ -297,6 +288,25 @@ function animateBlessingText(nextText) {
     deityCopyEl.classList.remove("smoke-out");
     deityCopyEl.classList.add("smoke-in");
   }, 260);
+}
+
+function stopDeityVideo() {
+  isDeityVideoPlaying = false;
+  deityVideoEl.pause();
+  deityVideoEl.currentTime = 0;
+}
+
+async function playDeityVideo() {
+  const deity = DEITIES[state.pray.deity];
+  if (!deity?.video) return;
+  deityVideoEl.src = deity.video;
+  deityVideoEl.currentTime = 0;
+  isDeityVideoPlaying = true;
+  try {
+    await deityVideoEl.play();
+  } catch {
+    stopDeityVideo();
+  }
 }
 
 function renderIndexes(quotes) {
@@ -377,9 +387,10 @@ function renderWatchlist(quotes) {
         popoverOpen
           ? `<div class="target-popover">
               <div class="target-entry popover-entry">
-                <div class="target-popover-title">设置目标价</div>
-                <input class="target-input popover-input" type="number" step="0.01" data-symbol="${stock.symbol}" data-type="new-target" placeholder="输入目标价，如 35.20" value="${
-                  state.draftTargets[stock.symbol] || ""
+                <div class="target-popover-title">目标价</div>
+                <input class="target-input popover-input" type="number" step="0.10" data-symbol="${stock.symbol}" data-type="new-target" placeholder="请输入，如 ${formatPrice(q?.price) === "--" ? "35.20" : formatPrice(q?.price)}" value="${
+                  state.draftTargets[stock.symbol] ||
+                  (q?.price !== null && q?.price !== undefined ? formatPrice(q.price) : "")
                 }">
                 <button class="confirm-target" data-symbol="${stock.symbol}">确定</button>
               </div>
@@ -392,10 +403,15 @@ function renderWatchlist(quotes) {
 }
 
 function renderDeityDisplay() {
-  deityNameEl.textContent = DEITIES[state.pray.deity].name;
-  deityCopyEl.textContent = state.prayDisplayedCopy || DEITIES[state.pray.deity].copy;
-  deityImageEl.src = DEITIES[state.pray.deity].image;
-  deityImageEl.alt = DEITIES[state.pray.deity].name;
+  const deity = DEITIES[state.pray.deity];
+  deityNameEl.textContent = deity.name;
+  deityCopyEl.textContent = state.prayDisplayedCopy || deity.copy;
+  if (deityVideoEl.dataset.deity !== state.pray.deity) {
+    stopDeityVideo();
+    deityVideoEl.src = deity.video;
+    deityVideoEl.dataset.deity = state.pray.deity;
+    deityVideoEl.load();
+  }
   incenseCountEl.textContent = String(state.pray.incenseCount);
 }
 
@@ -481,7 +497,7 @@ function renderMode() {
   watchCardEl.classList.toggle("hidden", inPrayMode);
   prayCardEl.classList.toggle("hidden", !inPrayMode);
   heroSubEl.textContent = inPrayMode
-    ? "求神模式 · 上香祈福 · 三个供位"
+    ? "财神保佑 · 上香祈福 · 三个供位"
     : "实时行情 · 价格提醒 · 浏览器通知";
   searchInput.placeholder = inPrayMode
     ? "输入股票代码或名称，加入供位"
@@ -548,12 +564,20 @@ function closeQrModal() {
   qrModalEl.classList.add("hidden");
 }
 
+function openInfoModal() {
+  infoModalEl.classList.remove("hidden");
+}
+
+function closeInfoModal() {
+  infoModalEl.classList.add("hidden");
+}
+
 function openPraySearch(slotIndex) {
   state.activePraySlotIndex = slotIndex;
   praySearchOverlayEl.classList.remove("hidden");
   praySearchInputEl.value = state.praySearchDraft;
   praySearchInputEl.focus();
-  renderPraySearchResults([]);
+  renderPraySearchResults();
 }
 
 function closePraySearch() {
@@ -617,13 +641,26 @@ function renderSearchResults(list) {
   });
 }
 
-function renderPraySearchResults(list) {
+function getPraySearchFallbackList() {
+  return state.watchlist
+    .filter((item) => item?.symbol)
+    .map((item) => ({
+      symbol: item.symbol,
+      shortname: item.name,
+      longname: item.name,
+      secid: item.secid || "",
+    }));
+}
+
+function renderPraySearchResults(list = null) {
+  const sourceList = Array.isArray(list) ? list : getPraySearchFallbackList();
   praySearchResultsEl.innerHTML = "";
-  if (!list.length) {
-    praySearchResultsEl.innerHTML = '<div class="empty">输入代码或名称后即可上供</div>';
+  if (!sourceList.length) {
+    praySearchResultsEl.innerHTML =
+      '<div class="empty">暂无关注股票，先去盯盘助手里添加关注，或直接搜索上供</div>';
     return;
   }
-  list.forEach((item) => {
+  sourceList.forEach((item) => {
     const prayed = state.pray.fruits.some((stock) => stock?.symbol === item.symbol);
     const row = document.createElement("div");
     row.className = "pray-result-row";
@@ -714,9 +751,11 @@ function bindWatchlistEvents() {
 
     if (bellBtn) {
       const symbol = bellBtn.dataset.symbol;
+      const quote = state.lastQuotes[symbol];
       state.activePopoverSymbol = state.activePopoverSymbol === symbol ? null : symbol;
       if (state.activePopoverSymbol && !state.draftTargets[symbol]) {
-        state.draftTargets[symbol] = "";
+        state.draftTargets[symbol] =
+          quote?.price !== null && quote?.price !== undefined ? formatPrice(quote.price) : "";
       }
       renderWatchlist(state.lastQuotes);
       const input = watchlistEl.querySelector(`input.popover-input[data-symbol="${symbol}"]`);
@@ -812,6 +851,7 @@ function bindPrayEvents() {
       await savePrayState();
       incenseCountEl.textContent = String(state.pray.incenseCount);
       animateBlessingText(blessing);
+      playDeityVideo();
       return;
     }
 
@@ -826,7 +866,7 @@ function bindPrayEvents() {
       await savePrayState();
       await fetchPrayQuotes().catch(() => {});
       renderPrayMode();
-      renderPraySearchResults([]);
+      renderPraySearchResults();
     }
   });
 }
@@ -865,7 +905,7 @@ function bindSearchResultsClick() {
       showStatus("已在关注列表");
       return;
     }
-    state.watchlist.push({
+    state.watchlist.unshift({
       symbol,
       name,
       secid,
@@ -890,7 +930,7 @@ function bindPraySearch() {
     const value = praySearchInputEl.value.trim();
     state.praySearchDraft = value;
     if (!value) {
-      renderPraySearchResults([]);
+      renderPraySearchResults();
       return;
     }
     praySearchTimer = setTimeout(() => searchPrayStock(value), 250);
@@ -937,6 +977,12 @@ function bindModal() {
     }
   });
 
+  infoModalEl.addEventListener("click", (e) => {
+    if (e.target.dataset.closeInfoModal === "true" || e.target.id === "close-info-modal") {
+      closeInfoModal();
+    }
+  });
+
   praySearchOverlayEl.addEventListener("click", (e) => {
     if (e.target === praySearchOverlayEl || e.target.id === "close-pray-search") {
       closePraySearch();
@@ -964,6 +1010,7 @@ async function ensureNotificationPermission() {
 
 function bindActions() {
   document.getElementById("refresh-btn").addEventListener("click", () => refreshQuotes(true));
+  document.getElementById("info-btn").addEventListener("click", openInfoModal);
   document.addEventListener("click", (e) => {
     if (
       e.target.closest(".bell-btn") ||
@@ -1021,6 +1068,13 @@ async function init() {
   bindPraySearch();
   bindModal();
   bindActions();
+  deityVideoEl.addEventListener("ended", stopDeityVideo);
+  deityVideoEl.addEventListener("error", stopDeityVideo);
+  deityVideoEl.addEventListener("loadeddata", () => {
+    if (isDeityVideoPlaying) return;
+    deityVideoEl.pause();
+    deityVideoEl.currentTime = 0;
+  });
   await fetchPrayQuotes().catch(() => {});
   refreshQuotes();
   renderSearchResultsFromInput();

@@ -13,11 +13,25 @@
           <div class="title-mode-switch" id="mode-switch">
             <button class="title-mode-btn active" data-mode="watch">盯盘助手</button>
             <button class="title-mode-btn title-mode-pray" data-mode="pray">
-              <span>求神祈福</span>
+              <span>财神保佑</span>
               <span class="title-mode-badge">旺</span>
             </button>
           </div>
-          <button id="refresh-btn" class="refresh-btn">手动刷新</button>
+          <div class="hero-actions">
+            <button id="info-btn" class="icon-btn" title="作者信息" aria-label="作者信息">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+                <path d="M12 10.2v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                <circle cx="12" cy="7.4" r="1.1" fill="currentColor"></circle>
+              </svg>
+            </button>
+            <button id="refresh-btn" class="icon-btn" title="手动刷新" aria-label="手动刷新">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 8a7 7 0 1 0 1.4 6.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                <path d="M19 4v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="hero-meta">
           <p class="sub" id="hero-sub">实时行情 · 价格提醒 · 浏览器通知</p>
@@ -46,15 +60,21 @@
       </section>
 
       <section class="card pray-card hidden" id="pray-card">
-        <div class="deity-carousel">
-          <button class="deity-arrow" id="deity-prev" aria-label="上一个神位">‹</button>
-          <div class="deity-name" id="deity-name">财神爷</div>
-          <button class="deity-arrow" id="deity-next" aria-label="上一个神位">›</button>
-        </div>
         <div class="altar-card">
           <div class="altar-stage">
-            <div class="deity-image-wrap">
-              <img id="deity-image" class="deity-image" src="assets/deity-caishen.svg" alt="财神爷" />
+            <div class="deity-name" id="deity-name">财神爷</div>
+            <div class="deity-display">
+              <button class="deity-arrow deity-arrow-left" id="deity-prev" aria-label="上一个神位">‹</button>
+              <div class="deity-image-wrap">
+              <video
+                id="deity-video"
+                class="deity-video"
+                playsinline
+                preload="auto"
+                muted
+              ></video>
+              </div>
+              <button class="deity-arrow deity-arrow-right" id="deity-next" aria-label="下一个神位">›</button>
             </div>
             <div class="altar-copy altar-copy-centered" id="deity-copy">愿今日红红火火，账户长虹。</div>
             <div class="altar-fruits-row" id="altar-fruits-row">
@@ -92,9 +112,32 @@
       <div class="modal-panel">
         <button class="modal-close" id="close-qr-modal" title="关闭">×</button>
         <div class="modal-title">供位已满</div>
-        <div class="modal-copy">当前最多只能上供三只股票。若要继续增加，请扫描开发者二维码。</div>
-        <img class="qr-image" src="assets/developer-qr.svg" alt="开发者二维码" />
-        <div class="modal-footnote">当前二维码为占位图，后续可替换为真实开发者二维码。</div>
+        <div class="modal-copy">当前最多只能上供三只股票。想继续加票，欢迎扫码联系作者交流。</div>
+        <img class="qr-image" src="assets/developer-qr.png" alt="作者微信二维码" />
+        <div class="modal-footnote">扫码备注来意，我会尽快回复。</div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="info-modal">
+      <div class="modal-backdrop" data-close-info-modal="true"></div>
+      <div class="modal-panel info-modal-panel">
+        <button class="modal-close" id="close-info-modal" title="关闭">×</button>
+        <div class="modal-title">联系开发者</div>
+        <div class="modal-copy">Zhang Xumeng </div>
+        <div class="modal-copy info-contact">18612033945（同微信）</div>
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-card-title">微信联系</div>
+            <img class="qr-image" src="assets/developer-qr.png" alt="微信二维码" />
+            <div class="info-card-copy">加我反馈问题或提出建议</div>
+          </div>
+          <div class="info-card">
+            <div class="info-card-title">支持一下</div>
+            <img class="qr-image" src="assets/alipay.png" alt="收款码" />
+            <div class="info-card-copy">欢迎金主请我喝杯咖啡</div>
+          </div>
+        </div>
+        <div class="modal-footnote">感谢支持，祝你自选常红、账户长虹。</div>
       </div>
     </div>
 

@@ -42,9 +42,15 @@ body {
   gap: 12px;
 }
 
+.hero-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sub {
   margin: 0;
-  color: var(--muted);
+  color: #9ca3af;
   font-size: 12px;
 }
 
@@ -75,17 +81,27 @@ button:hover {
   color: white;
 }
 
-.refresh-btn {
-  padding: 5px 10px;
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid #dbe4f0;
   color: #5b6b84;
   font-weight: 600;
   box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.refresh-btn:hover {
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-btn:hover {
   transform: none;
   box-shadow: none;
   background: rgba(255, 255, 255, 0.92);
@@ -319,13 +335,17 @@ button:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 10px;
-  border-radius: 999px;
+  padding: 5px 0px;
+  border-radius: 8px;
   background: #ecfdf3;
   color: #15803d;
   border: 1px solid #bbf7d0;
   font-size: 12px;
   font-weight: 600;
+  width: 64px;
+  justify-content: center;
+  white-space: nowrap;
+  flex: none;
 }
 
 .section-title-row {
@@ -516,7 +536,7 @@ button:hover {
 .target-input {
   flex: 1;
   border: 1px solid #d7dce0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 8px 10px;
   font-size: 13px;
   background: white;
@@ -526,6 +546,11 @@ button:hover {
 .confirm-target {
   background: var(--blue);
   color: white;
+  width: 56px;
+  min-width: 56px;
+  white-space: nowrap;
+  border-radius: 8px;
+  flex: none;
 }
 
 .pray-card {
@@ -533,40 +558,44 @@ button:hover {
   border: 1px solid #f4e8bf;
 }
 
-.deity-carousel {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  justify-content: center;
-  margin: 4px 0 14px;
-}
-
 .deity-name {
   color: #8b5e05;
   font-weight: 800;
   font-size: 20px;
-  min-width: 96px;
   text-align: center;
+  margin: 4px 0 6px;
 }
 
 .deity-arrow {
+  position: absolute;
+  top: 50%;
   width: 34px;
   height: 34px;
-  padding: 0;
+  padding: 0px 0px 4px 0px;
   border-radius: 999px;
   background: #fff6dd;
   border: 1px solid #efd79b;
   color: #8b5e05;
   box-shadow: none;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
+  transform: translateY(-50%);
+  z-index: 2;
 }
 
 .deity-arrow:hover {
-  transform: none;
+  transform: translateY(-50%);
   box-shadow: none;
   background: #fdf0c8;
   color: #6b4423;
+}
+
+.deity-arrow-left {
+  left: -28px;
+}
+
+.deity-arrow-right {
+  right: -28px;
 }
 
 .altar-card {
@@ -586,15 +615,15 @@ button:hover {
   text-align: center;
   margin-top: -2px;
   font-size: 13px;
-  transition: opacity 0.22s ease, filter 0.22s ease, transform 0.22s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .altar-copy.smoke-out {
-  animation: blessing-smoke-out 0.26s ease forwards;
+  animation: blessing-smoke-out 0.2s ease forwards;
 }
 
 .altar-copy.smoke-in {
-  animation: blessing-smoke-in 0.42s ease forwards;
+  animation: blessing-smoke-in 0.28s ease forwards;
 }
 
 .incense-btn {
@@ -630,11 +659,22 @@ button:hover {
   gap: 10px;
 }
 
+.deity-display {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .deity-image-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 0;
+  position: relative;
+  width: 226px;
+  height: 226px;
+  overflow: hidden;
 }
 
 .deity-image {
@@ -645,13 +685,24 @@ button:hover {
   filter: drop-shadow(0 8px 18px rgba(124, 74, 3, 0.08));
 }
 
+.deity-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: transparent;
+  filter: drop-shadow(0 8px 18px rgba(124, 74, 3, 0.08));
+  pointer-events: none;
+}
+
 .altar-fruits-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   width: 100%;
   align-items: end;
-  height: 48px;
+  height: 56px;
   margin-top: 2px;
 }
 
@@ -659,7 +710,7 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
+  height: 56px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.55);
   border: 1px dashed #e4c46d;
@@ -680,14 +731,14 @@ button:hover {
   align-items: flex-start;
   justify-content: space-between;
   flex-direction: column;
-  height: 48px;
+  height: 56px;
   gap: 0;
   font-size: 12px;
   border-style: solid;
   background: linear-gradient(180deg, #fff8e6, #ffd27a);
   color: #7c4a03;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 8px 8px;
   box-sizing: border-box;
 }
 
@@ -749,7 +800,7 @@ button:hover {
   width: 16px;
   height: 16px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 8px;
   background: rgba(255,255,255,.68);
   color: #8f5b09;
   box-shadow: none;
@@ -795,17 +846,18 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 4px;
   z-index: 4;
 }
 
 .pray-search-panel {
   width: 100%;
+  max-width: 560px;
   border-radius: 18px;
   background: rgba(255,255,255,.96);
   border: 1px solid #efd79b;
   box-shadow: 0 16px 36px rgba(146, 95, 16, 0.16);
-  padding: 14px;
+  padding: 18px;
 }
 
 .pray-search-head {
@@ -880,29 +932,44 @@ button:hover {
   color: #5b3b00;
 }
 
+.pray-result-row .add {
+  background: #6b3f1f;
+  color: #ffffff;
+  font-weight: 700;
+  width: 64px;
+  min-width: 64px;
+  border-radius: 8px;
+  box-shadow: none;
+  white-space: nowrap;
+  flex: none;
+  justify-content: center;
+}
+
+.pray-result-row .add:hover {
+  transform: none;
+  box-shadow: none;
+  background: #5a3418;
+}
+
 @keyframes blessing-smoke-out {
   0% {
     opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
   100% {
     opacity: 0;
-    filter: blur(12px);
-    transform: translateY(-12px) scale(1.04);
+    transform: translateY(-6px);
   }
 }
 
 @keyframes blessing-smoke-in {
   0% {
     opacity: 0;
-    filter: blur(12px);
-    transform: translateY(12px) scale(0.98);
+    transform: translateY(6px);
   }
   100% {
     opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -920,13 +987,53 @@ button:hover {
 
 .modal-panel {
   position: relative;
-  width: 320px;
+  width: 280px;
   margin: 80px auto 0;
   background: white;
   border-radius: 18px;
   padding: 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
   text-align: center;
+}
+
+.info-modal-panel {
+  width: 280px;
+  text-align: left;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.info-card {
+  border: 1px solid #ebe3c6;
+  border-radius: 14px;
+  background: #fffdf7;
+  padding: 10px;
+  text-align: center;
+}
+
+.info-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #7c4a03;
+  margin-bottom: 8px;
+}
+
+.info-card-copy {
+  font-size: 10px;
+  color: #7b7280;
+  margin-top: 12px;
+}
+
+.info-contact {
+  margin-top: 12px;
+  color: #94a3b8;
+  font-weight: 400;
+  font-size: 12px;
 }
 
 .modal-close {
@@ -945,28 +1052,30 @@ button:hover {
   font-size: 18px;
   font-weight: 700;
   margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .modal-copy {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
+  margin-top: 12px;
+  color: #576578;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .qr-image {
   display: block;
-  width: 180px;
-  height: 180px;
-  margin: 18px auto 0;
+  width: 110px;
+  height: 110px;
+  margin: 10px auto 0;
   border-radius: 12px;
   border: 1px solid var(--line);
+  object-fit: contain;
 }
 
 .modal-footnote {
-  margin-top: 10px;
-  color: #94a3b8;
-  font-size: 11px;
+  margin-top: 18px;
+  color: #576578;
+  font-size: 12px;
 }
 
 .bell-icon {
@@ -987,7 +1096,7 @@ button:hover {
   text-align: center;
   padding: 12px;
   color: #9ca3af;
-  font-size: 12px;
+  font-size: 18px;
 }
 
 #status {
