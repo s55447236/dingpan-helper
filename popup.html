@@ -137,7 +137,22 @@
             <div class="info-card-copy">欢迎金主请我喝杯咖啡</div>
           </div>
         </div>
+        <div class="review-strip">
+          <div class="review-copy">
+            <div class="review-title">喜欢这个插件？</div>
+            <div class="review-stars" aria-hidden="true">★★★★★</div>
+          </div>
+          <button id="review-btn" class="review-btn">去给个 5 星</button>
+        </div>
         <div class="modal-footnote">感谢支持，祝你自选常红、账户长虹。</div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="detail-modal">
+      <div class="modal-backdrop" data-close-detail-modal="true"></div>
+      <div class="modal-panel detail-modal-panel">
+        <button class="modal-close" id="close-detail-modal" title="关闭">×</button>
+        <div id="detail-body"></div>
       </div>
     </div>
 

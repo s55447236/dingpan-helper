@@ -72,6 +72,8 @@ const altarFruitsRowEl = document.getElementById("altar-fruits-row");
 const praySearchOverlayEl = document.getElementById("pray-search-overlay");
 const praySearchInputEl = document.getElementById("pray-search-input");
 const praySearchResultsEl = document.getElementById("pray-search-results");
+const detailModalEl = document.getElementById("detail-modal");
+const detailBodyEl = document.getElementById("detail-body");
 
 const state = {
   watchlist: [],
@@ -88,6 +90,13 @@ const state = {
     incenseCount: 0,
     fruits: [],
   },
+  detail: {
+    symbol: null,
+    loading: false,
+    error: "",
+    data: null,
+    hoverIndex: null,
+  },
 };
 let isDeityVideoPlaying = false;
 
@@ -97,6 +106,8 @@ const BELL_ICON = `
     <path d="M9.5 18a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
   </svg>
 `;
+const STORE_REVIEW_URL =
+  "https://chromewebstore.google.com/detail/%E7%9B%AF%E7%9B%98%E5%8A%A9%E6%89%8B-%E6%91%B8%E9%B1%BC%E7%9C%8B%E7%9B%98%E5%B0%8F%E5%B8%AE%E6%89%8B%EF%BC%88%E8%B4%A2%E7%A5%9E%E4%BF%9D%E4%BD%91%E4%B8%80%E7%9B%B4%E7%BA%A2%EF%BC%89/icdblaikjdibjifnoiklopllamiaafhg/reviews";
 
 function makeAlertId() {
   return `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -200,6 +211,11 @@ function formatPrice(val) {
   return Number(val).toFixed(2);
 }
 
+function formatSignedPrice(val) {
+  if (val === null || val === undefined || Number.isNaN(val)) return "--";
+  return `${val > 0 ? "+" : ""}${Number(val).toFixed(2)}`;
+}
+
 function normalizePrice(value) {
   if (value === null || value === undefined || value === "") return null;
   const num = Number(value);
@@ -212,6 +228,23 @@ function changeClass(val) {
   if (val > 0) return "up";
   if (val < 0) return "down";
   return "";
+}
+
+function formatLargeNumber(value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  const abs = Math.abs(value);
+  if (abs >= 1e8) return `${(value / 1e8).toFixed(2)}亿`;
+  if (abs >= 1e4) return `${(value / 1e4).toFixed(2)}万`;
+  return `${Math.round(value)}`;
+}
+
+function inferSecid(symbol) {
+  if (!symbol) return null;
+  if (/^\d{5}$/.test(symbol)) return `116.${symbol}`;
+  if (/^[A-Z]/.test(symbol)) return `105.${symbol}`;
+  if (symbol.startsWith("6") || symbol.startsWith("9")) return `1.${symbol}`;
+  if (symbol.startsWith("0") || symbol.startsWith("3")) return `0.${symbol}`;
+  return null;
 }
 
 function isAlertHit(currentPrice, targetPrice) {
@@ -352,6 +385,7 @@ function renderWatchlist(quotes) {
     const hasAlerts = stock.alerts.length > 0;
     const card = document.createElement("div");
     card.className = "stock-card";
+    card.dataset.symbol = stock.symbol;
     card.innerHTML = `
       <div class="stock-header">
         <div class="stock-info">
@@ -400,6 +434,329 @@ function renderWatchlist(quotes) {
     `;
     watchlistEl.appendChild(card);
   });
+}
+
+function parseTrendPoint(trend) {
+  const parts = String(trend).split(",");
+  const timeText = parts[0]?.split(" ")?.[1] || "--:--";
+  const price = normalizePrice(parts[1]);
+  return {
+    time: timeText,
+    price,
+  };
+}
+
+function getTradingOffset(timeText) {
+  const [hour, minute] = String(timeText)
+    .split(":")
+    .map((item) => Number(item));
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return 0;
+  const totalMinutes = hour * 60 + minute;
+  const morningStart = 9 * 60 + 30;
+  const morningEnd = 11 * 60 + 30;
+  const afternoonStart = 13 * 60;
+  const afternoonEnd = 15 * 60;
+
+  if (totalMinutes <= morningStart) return 0;
+  if (totalMinutes <= morningEnd) return totalMinutes - morningStart;
+  if (totalMinutes < afternoonStart) return 120;
+  if (totalMinutes <= afternoonEnd) return 120 + (totalMinutes - afternoonStart);
+  return 240;
+}
+
+function buildTrendSvg(points, preClose) {
+  if (!points.length) {
+    return '<div class="detail-chart-empty">今日暂无分时数据</div>';
+  }
+
+  const width = 286;
+  const height = 128;
+  const paddingX = 4;
+  const paddingY = 10;
+  const validPrices = points.map((item) => item.price).filter((item) => item !== null);
+  if (!validPrices.length) {
+    return '<div class="detail-chart-empty">今日暂无分时数据</div>';
+  }
+
+  const min = Math.min(...validPrices, preClose ?? validPrices[0]);
+  const max = Math.max(...validPrices, preClose ?? validPrices[0]);
+  const range = Math.max(max - min, 0.01);
+  const plotWidth = width - paddingX * 2;
+  const plotHeight = height - paddingY * 2;
+  const totalTradingMinutes = 240;
+  const getX = (timeText) => paddingX + (getTradingOffset(timeText) / totalTradingMinutes) * plotWidth;
+  const getY = (price) =>
+    paddingY + ((max - price) / range) * plotHeight;
+
+  const line = points
+    .map((point) => `${getX(point.time)},${getY(point.price ?? min)}`)
+    .join(" ");
+  const lastPointX = getX(points[points.length - 1]?.time || "09:30");
+  const area = `${paddingX},${height - paddingY} ${line} ${lastPointX},${height - paddingY}`;
+  const baseLineY = preClose !== null && preClose !== undefined ? getY(preClose) : height / 2;
+  const lastPrice = points[points.length - 1]?.price ?? validPrices[validPrices.length - 1];
+  const isUp = preClose !== null && preClose !== undefined ? lastPrice >= preClose : lastPrice >= validPrices[0];
+  const strokeColor = isUp ? "#dc2626" : "#16a34a";
+  const fillStart = isUp ? "rgba(220,38,38,0.22)" : "rgba(22,163,74,0.20)";
+  const fillEnd = isUp ? "rgba(220,38,38,0.03)" : "rgba(22,163,74,0.03)";
+
+  const lastOffset = getTradingOffset(points[points.length - 1]?.time || "09:30");
+  const timeMarks = [
+    { label: "09:30", offset: 0, anchor: "start" },
+    { label: "10:30", offset: 60, anchor: "middle" },
+    { label: "11:30", offset: 120, anchor: "middle" },
+    { label: "14:00", offset: 180, anchor: "middle" },
+    { label: "15:00", offset: 240, anchor: "end" },
+  ];
+
+  const hoverIndex = state.detail.hoverIndex;
+  const hoverPoint =
+    hoverIndex !== null && hoverIndex >= 0 && hoverIndex < points.length ? points[hoverIndex] : null;
+  const hoverX = hoverPoint ? getX(hoverPoint.time) : null;
+  const hoverY = hoverPoint ? getY(hoverPoint.price ?? min) : null;
+  const highestPoint = points.reduce((best, point) => ((point.price ?? min) > (best.price ?? min) ? point : best), points[0]);
+  const lowestPoint = points.reduce((best, point) => ((point.price ?? max) < (best.price ?? max) ? point : best), points[0]);
+  const highestX = getX(highestPoint.time);
+  const highestY = getY(highestPoint.price ?? max);
+  const lowestX = getX(lowestPoint.time);
+  const lowestY = getY(lowestPoint.price ?? min);
+  const highestLabelX = Math.min(Math.max(highestX, paddingX + 18), width - paddingX - 18);
+  const lowestLabelX = Math.min(Math.max(lowestX, paddingX + 18), width - paddingX - 18);
+  const highestLabelY = Math.max(paddingY + 10, highestY - 8);
+  const lowestLabelY = Math.min(height - paddingY - 2, lowestY + 14);
+  const tooltipText = hoverPoint ? `${hoverPoint.time} ${formatPrice(hoverPoint.price)}` : "";
+  const tooltipWidth = Math.max(64, tooltipText.length * 6.2 + 14);
+  const tooltipX = hoverPoint
+    ? Math.min(Math.max(hoverX - tooltipWidth / 2, paddingX), width - paddingX - tooltipWidth)
+    : 0;
+  const tooltipY = hoverPoint ? Math.max(paddingY, hoverY - 22) : 0;
+
+  return `
+    <svg class="detail-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="detail-chart-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="${fillStart}"></stop>
+          <stop offset="100%" stop-color="${fillEnd}"></stop>
+        </linearGradient>
+      </defs>
+      <line x1="${paddingX}" x2="${width - paddingX}" y1="${baseLineY}" y2="${baseLineY}" class="detail-chart-base"></line>
+      <polygon points="${area}" fill="url(#detail-chart-fill)"></polygon>
+      <polyline points="${line}" class="detail-chart-line" style="stroke:${strokeColor}"></polyline>
+      <circle cx="${highestX}" cy="${highestY}" r="3.2" class="detail-chart-extreme-dot" style="stroke:${strokeColor}"></circle>
+      <text x="${highestLabelX}" y="${highestLabelY}" class="detail-chart-extreme-label">${formatPrice(highestPoint.price)}</text>
+      <circle cx="${lowestX}" cy="${lowestY}" r="3.2" class="detail-chart-extreme-dot" style="stroke:${strokeColor}"></circle>
+      <text x="${lowestLabelX}" y="${lowestLabelY}" class="detail-chart-extreme-label">${formatPrice(lowestPoint.price)}</text>
+      ${
+        hoverPoint
+          ? `<line x1="${hoverX}" x2="${hoverX}" y1="${paddingY}" y2="${height - paddingY}" class="detail-chart-hover-guide"></line>
+             <circle cx="${hoverX}" cy="${hoverY}" r="4" class="detail-chart-hover-dot" style="stroke:${strokeColor}"></circle>
+             <rect x="${tooltipX}" y="${tooltipY}" width="${tooltipWidth}" height="16" rx="8" class="detail-chart-tooltip-bg"></rect>
+             <text x="${tooltipX + tooltipWidth / 2}" y="${tooltipY + 11}" class="detail-chart-tooltip">${tooltipText}</text>`
+          : ""
+      }
+      <text x="${width - paddingX}" y="${baseLineY - 4}" class="detail-chart-zero">0%</text>
+      ${timeMarks
+        .map((item) => {
+          const x = paddingX + (item.offset / totalTradingMinutes) * plotWidth;
+          const classes =
+            item.anchor === "middle"
+              ? "detail-chart-label detail-chart-label-center"
+              : item.anchor === "end"
+                ? "detail-chart-label detail-chart-label-right"
+                : "detail-chart-label";
+          return `<text x="${x}" y="${height - 2}" class="${classes}">${item.label}</text>`;
+        })
+        .join("")}
+    </svg>
+  `;
+}
+
+function renderDetailModal() {
+  if (!state.detail.symbol) {
+    document.body.classList.remove("modal-open");
+    document.querySelector(".container")?.classList.remove("modal-open");
+    detailModalEl.classList.add("hidden");
+    detailBodyEl.innerHTML = "";
+    return;
+  }
+
+  document.body.classList.add("modal-open");
+  document.querySelector(".container")?.classList.add("modal-open");
+  detailModalEl.classList.remove("hidden");
+
+  if (state.detail.loading) {
+    detailBodyEl.innerHTML = '<div class="detail-loading">正在加载今日行情详情...</div>';
+    return;
+  }
+
+  if (state.detail.error) {
+    detailBodyEl.innerHTML = `<div class="detail-error">${state.detail.error}</div>`;
+    return;
+  }
+
+  const detail = state.detail.data;
+  if (!detail) return;
+  const hoverPoint =
+    state.detail.hoverIndex !== null && detail.trends[state.detail.hoverIndex]
+      ? detail.trends[state.detail.hoverIndex]
+      : null;
+  const activePrice = hoverPoint?.price ?? detail.price;
+  const activeChange =
+    hoverPoint?.price !== null && hoverPoint?.price !== undefined && detail.preClose !== null
+      ? normalizePrice(hoverPoint.price - detail.preClose)
+      : detail.change;
+  const activeChangePercent =
+    hoverPoint?.price !== null && hoverPoint?.price !== undefined && detail.preClose !== null
+      ? normalizePrice(((hoverPoint.price - detail.preClose) / detail.preClose) * 100)
+      : detail.changePercent;
+
+  detailBodyEl.innerHTML = `
+    <div class="detail-head">
+      <div>
+        <div class="detail-title">${detail.name}</div>
+        <div class="detail-subtitle">${getMarketLabel(detail.symbol, detail.secid)} ${detail.symbol}</div>
+      </div>
+    </div>
+    <div class="detail-price-row">
+      <div class="detail-price ${changeClass(activeChangePercent)}">${formatPrice(activePrice)}</div>
+      <div class="detail-price-meta ${changeClass(activeChangePercent)}">
+        <span>${formatSignedPrice(activeChange)}</span>
+        <span>(${formatPercent(activeChangePercent)})</span>
+      </div>
+      <div class="detail-time">${hoverPoint ? hoverPoint.time : "今日最新"}</div>
+    </div>
+    <div class="detail-chart-card">
+      ${buildTrendSvg(detail.trends, detail.preClose)}
+    </div>
+    <div class="detail-stats-grid">
+      <div class="detail-stat"><span class="label">昨收</span><span class="value">${formatPrice(detail.preClose)}</span></div>
+      <div class="detail-stat"><span class="label">今开</span><span class="value">${formatPrice(detail.open)}</span></div>
+      <div class="detail-stat"><span class="label">最高</span><span class="value">${formatPrice(detail.high)}</span></div>
+      <div class="detail-stat"><span class="label">最低</span><span class="value">${formatPrice(detail.low)}</span></div>
+      <div class="detail-stat"><span class="label">成交量</span><span class="value">${formatLargeNumber(detail.volume)}</span></div>
+      <div class="detail-stat"><span class="label">成交额</span><span class="value">${formatLargeNumber(detail.amount)}</span></div>
+      <div class="detail-stat"><span class="label">振幅</span><span class="value">${detail.amplitude === null ? "--" : `${Number(detail.amplitude).toFixed(2)}%`}</span></div>
+      <div class="detail-stat"><span class="label">总市值</span><span class="value">${formatLargeNumber(detail.marketCap)}</span></div>
+    </div>
+  `;
+
+  bindDetailChartHover(detail);
+}
+
+function bindDetailChartHover(detail) {
+  const svg = detailBodyEl.querySelector(".detail-chart-svg");
+  if (!svg || !detail.trends.length) return;
+
+  const updateHover = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+    const ratio = rect.width === 0 ? 0 : x / rect.width;
+    const tradingOffset = ratio * 240;
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+
+    detail.trends.forEach((point, index) => {
+      const distance = Math.abs(getTradingOffset(point.time) - tradingOffset);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    if (state.detail.hoverIndex !== nearestIndex) {
+      state.detail.hoverIndex = nearestIndex;
+      renderDetailModal();
+    }
+  };
+
+  svg.addEventListener("mousemove", (event) => updateHover(event.clientX));
+  svg.addEventListener("mouseleave", () => {
+    state.detail.hoverIndex = null;
+    renderDetailModal();
+  });
+}
+
+async function fetchStockDetail(stock) {
+  const secid = stock.secid || inferSecid(stock.symbol);
+  if (!secid) throw new Error("这只股票暂不支持查看详情");
+
+  const quoteUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=${encodeURIComponent(
+    secid
+  )}&fields=f43,f44,f45,f46,f47,f48,f57,f58,f60,f116,f168,f170&ut=b2884a393a59ad64002292a3e90d46a5&fltt=2&invt=2`;
+  const trendUrl = `https://push2.eastmoney.com/api/qt/stock/trends2/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f17&fields2=f51,f52,f53,f54,f55,f56,f57,f58&ut=b2884a393a59ad64002292a3e90d46a5&secid=${encodeURIComponent(
+    secid
+  )}&ndays=1&iscr=0&iscca=0`;
+
+  const [quoteRes, trendRes] = await Promise.all([fetchJson(quoteUrl), fetchJson(trendUrl)]);
+  const quote = quoteRes?.data || {};
+  const trendData = trendRes?.data || {};
+  const trends = Array.isArray(trendData.trends) ? trendData.trends.map(parseTrendPoint) : [];
+  const preClose = normalizePrice(quote.f60 ?? trendData.preClose);
+  const price = normalizePrice(quote.f43);
+
+  return {
+    secid,
+    symbol: stock.symbol,
+    name: quote.f58 || stock.name || stock.symbol,
+    price,
+    preClose,
+    open: normalizePrice(quote.f46),
+    high: normalizePrice(quote.f44),
+    low: normalizePrice(quote.f45),
+    volume: Number(quote.f47),
+    amount: Number(quote.f48),
+    amplitude: normalizePrice(quote.f168),
+    marketCap: Number(quote.f116),
+    changePercent: normalizePrice(quote.f170),
+    change:
+      price !== null && preClose !== null ? normalizePrice(price - preClose) : null,
+    trends,
+  };
+}
+
+async function openStockDetail(symbol) {
+  const stock = findStock(symbol);
+  if (!stock) return;
+  state.detail = {
+    symbol,
+    loading: true,
+    error: "",
+    data: null,
+    hoverIndex: null,
+  };
+  renderDetailModal();
+  try {
+    const detail = await fetchStockDetail(stock);
+    if (state.detail.symbol !== symbol) return;
+    state.detail = {
+      symbol,
+      loading: false,
+      error: "",
+      data: detail,
+      hoverIndex: null,
+    };
+  } catch (error) {
+    if (state.detail.symbol !== symbol) return;
+    state.detail = {
+      symbol,
+      loading: false,
+      error: error?.message || "加载详情失败",
+      data: null,
+      hoverIndex: null,
+    };
+  }
+  renderDetailModal();
+}
+
+function closeDetailModal() {
+  state.detail = {
+    symbol: null,
+    loading: false,
+    error: "",
+    data: null,
+    hoverIndex: null,
+  };
+  renderDetailModal();
 }
 
 function renderDeityDisplay() {
@@ -732,6 +1089,7 @@ function findStock(symbol) {
 function bindWatchlistEvents() {
   watchlistEl.addEventListener("click", async (e) => {
     const target = e.target;
+    const stockCard = target.closest(".stock-card");
     const removeStockBtn = target.closest("button.remove-stock-inline");
     const bellBtn = target.closest("button.bell-btn");
     const confirmBtn = target.closest("button.confirm-target");
@@ -789,6 +1147,11 @@ function bindWatchlistEvents() {
       stock.alerts = stock.alerts.filter((item) => item.id !== removeTargetBtn.dataset.alertId);
       await saveWatchlist();
       renderWatchlist(state.lastQuotes);
+      return;
+    }
+
+    if (stockCard && !target.closest("button") && !target.closest("input")) {
+      openStockDetail(stockCard.dataset.symbol);
     }
   });
 
@@ -983,6 +1346,23 @@ function bindModal() {
     }
   });
 
+  detailModalEl.addEventListener("click", (e) => {
+    if (e.target.dataset.closeDetailModal === "true" || e.target.id === "close-detail-modal") {
+      closeDetailModal();
+    }
+  });
+
+  detailModalEl.addEventListener(
+    "wheel",
+    (e) => {
+      if (!detailBodyEl.contains(e.target)) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+    },
+    { passive: false }
+  );
+
   praySearchOverlayEl.addEventListener("click", (e) => {
     if (e.target === praySearchOverlayEl || e.target.id === "close-pray-search") {
       closePraySearch();
@@ -1011,6 +1391,10 @@ async function ensureNotificationPermission() {
 function bindActions() {
   document.getElementById("refresh-btn").addEventListener("click", () => refreshQuotes(true));
   document.getElementById("info-btn").addEventListener("click", openInfoModal);
+  document.getElementById("review-btn").addEventListener("click", async () => {
+    await chrome.tabs.create({ url: STORE_REVIEW_URL });
+    closeInfoModal();
+  });
   document.addEventListener("click", (e) => {
     if (
       e.target.closest(".bell-btn") ||

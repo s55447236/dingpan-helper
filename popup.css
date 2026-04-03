@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  font-family: "PingFang SC", "Helvetica", "Arial", sans-serif;
+  font-family: "Inter", "PingFang SC", "Helvetica", "Arial", sans-serif;
   --bg: #f5f6fa;
   --card: #ffffff;
   --line: #e5e7eb;
@@ -12,22 +12,52 @@
   --gold: #c89211;
 }
 
+/* 最外层文档：控制插件弹窗基础宽度，并去掉页面级滚动 */
+html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--text);
   width: 380px;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* 页面主体背景与文字颜色 */
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* 主容器：包住整个插件页面内容 */
 .container {
   padding: 14px;
+  box-sizing: border-box;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.container.modal-open {
+  overflow: hidden;
 }
 
 .hidden {
   display: none !important;
 }
 
+/* 顶部头部模块：标题、副标题、时间、操作按钮 */
 .hero {
   display: flex;
   flex-direction: column;
@@ -35,6 +65,7 @@ body {
   margin-bottom: 10px;
 }
 
+/* 顶部第一行：标题与右侧按钮 */
 .hero-top {
   display: flex;
   justify-content: space-between;
@@ -42,6 +73,7 @@ body {
   gap: 12px;
 }
 
+/* 顶部右侧按钮组：info / 刷新 */
 .hero-actions {
   display: inline-flex;
   align-items: center;
@@ -54,6 +86,7 @@ body {
   font-size: 12px;
 }
 
+/* 顶部第二行：副标题与右侧时间 */
 .hero-meta {
   display: flex;
   align-items: center;
@@ -74,11 +107,6 @@ button {
 button:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-}
-
-.primary {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: white;
 }
 
 .icon-btn {
@@ -112,14 +140,15 @@ button:hover {
   color: #9ca3af;
 }
 
+/* 通用卡片容器：指数卡、搜索卡、关注卡、财神卡共用 */
 .card {
   background: var(--card);
   border-radius: 16px;
   padding: 12px;
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
   margin-bottom: 12px;
 }
 
+/* 标题模式切换：盯盘助手 / 财神保佑 */
 .title-mode-switch {
   display: flex;
   align-items: center;
@@ -179,12 +208,14 @@ button:hover {
   background: linear-gradient(135deg, #f97316, #dc2626);
 }
 
+/* 指数区域容器：顶部三块大盘指数 */
 .indexes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: 10px;
 }
 
+/* 单个指数卡片 */
 .index-item {
   background: #f8fbff;
   border: 1px solid #dbeafe;
@@ -208,6 +239,7 @@ button:hover {
   font-size: 12px;
 }
 
+/* 搜索模块外层卡片 */
 .search-card {
   position: relative;
   display: flex;
@@ -220,10 +252,7 @@ button:hover {
   z-index: 3;
 }
 
-.search-card.has-results {
-  justify-content: flex-start;
-}
-
+/* 搜索输入框容器 */
 .search-box {
   display: flex;
   align-items: center;
@@ -247,6 +276,7 @@ button:hover {
   color: #9ca3af;
 }
 
+/* 通用纵向列表 */
 .list {
   display: flex;
   flex-direction: column;
@@ -254,6 +284,7 @@ button:hover {
   margin-top: 10px;
 }
 
+/* 搜索结果下拉面板 */
 .search-card .list {
   position: absolute;
   left: 12px;
@@ -279,6 +310,7 @@ button:hover {
 }
 
 .search-card.has-results {
+  justify-content: flex-start;
   z-index: 8;
 }
 
@@ -348,6 +380,7 @@ button:hover {
   flex: none;
 }
 
+/* 模块标题行：如“我的关注” */
 .section-title-row {
   display: flex;
   align-items: center;
@@ -361,20 +394,26 @@ button:hover {
   font-size: 14px;
 }
 
-.count,
-.pray-sub,
-.fruit-copy {
+.count {
   color: var(--muted);
   font-size: 12px;
 }
 
+/* 我的关注列表容器 */
 #watchlist {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
+  overflow: visible;
 }
 
+/* 我的关注卡片外层 */
+#watch-card {
+  display: block;
+}
+
+/* 单只股票卡片 */
 .stock-card {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -383,6 +422,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  cursor: pointer;
 }
 
 .stock-header {
@@ -553,11 +593,13 @@ button:hover {
   flex: none;
 }
 
+/* 财神保佑主卡片 */
 .pray-card {
   background: linear-gradient(180deg, #fffdf6, #fff9eb);
   border: 1px solid #f4e8bf;
 }
 
+/* 财神名称标题 */
 .deity-name {
   color: #8b5e05;
   font-weight: 800;
@@ -598,6 +640,7 @@ button:hover {
   right: -28px;
 }
 
+/* 财神内容主体：神像、文案、供位、香炉 */
 .altar-card {
   border-radius: 14px;
   padding: 0;
@@ -651,6 +694,7 @@ button:hover {
   transform: translateX(-50%) translateY(0);
 }
 
+/* 财神中部舞台区域 */
 .altar-stage {
   margin-top: 8px;
   display: flex;
@@ -659,6 +703,7 @@ button:hover {
   gap: 10px;
 }
 
+/* 神像展示区：含左右切换箭头 */
 .deity-display {
   position: relative;
   display: inline-flex;
@@ -677,14 +722,6 @@ button:hover {
   overflow: hidden;
 }
 
-.deity-image {
-  display: block;
-  width: 238px;
-  height: 250px;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 18px rgba(124, 74, 3, 0.08));
-}
-
 .deity-video {
   position: absolute;
   inset: 0;
@@ -696,6 +733,7 @@ button:hover {
   pointer-events: none;
 }
 
+/* 三个供位容器 */
 .altar-fruits-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -706,6 +744,7 @@ button:hover {
   margin-top: 2px;
 }
 
+/* 空供位 */
 .altar-slot {
   display: flex;
   align-items: center;
@@ -726,6 +765,7 @@ button:hover {
   background: rgba(255, 247, 220, 0.9);
 }
 
+/* 已上供的供位卡片 */
 .altar-slot.filled {
   position: relative;
   align-items: flex-start;
@@ -819,6 +859,7 @@ button:hover {
   object-fit: contain;
 }
 
+/* 香炉底部动作区：累计香火等 */
 .incense-actions {
   width: 100%;
   display: flex;
@@ -834,10 +875,7 @@ button:hover {
   line-height: 1;
 }
 
-.fruit-section {
-  display: none;
-}
-
+/* 财神模式搜索弹层遮罩 */
 .pray-search-overlay {
   position: absolute;
   inset: 0;
@@ -850,6 +888,7 @@ button:hover {
   z-index: 4;
 }
 
+/* 财神模式搜索弹窗主体 */
 .pray-search-panel {
   width: 100%;
   max-width: 560px;
@@ -973,6 +1012,7 @@ button:hover {
   }
 }
 
+/* 通用弹窗遮罩层 */
 .modal {
   position: fixed;
   inset: 0;
@@ -985,6 +1025,7 @@ button:hover {
   background: rgba(15, 23, 42, 0.45);
 }
 
+/* 通用弹窗主体 */
 .modal-panel {
   position: relative;
   width: 280px;
@@ -996,11 +1037,45 @@ button:hover {
   text-align: center;
 }
 
+/* 作者信息弹窗 */
 .info-modal-panel {
   width: 280px;
   text-align: left;
 }
 
+/* 股票详情弹窗 */
+.detail-modal-panel {
+  position: relative;
+  width: 366px;
+  height: 560px;
+  text-align: left;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0;
+  max-width: calc(100vw - 28px);
+}
+
+/* 股票详情弹窗外层，用于居中显示 */
+#detail-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+
+/* 股票详情滚动内容区 */
+#detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+/* 作者信息二维码双列区域 */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1041,11 +1116,14 @@ button:hover {
   top: 12px;
   right: 12px;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   color: #64748b;
   box-shadow: none;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 200;
 }
 
 .modal-title {
@@ -1062,6 +1140,173 @@ button:hover {
   line-height: 1;
 }
 
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.detail-subtitle {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.detail-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.detail-price {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.detail-price-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-time {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.detail-chart-card {
+  margin-top: 22px;
+  padding: 10px 0 10px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+}
+
+.detail-chart-svg {
+  width: 100%;
+  height: 148px;
+  display: block;
+}
+
+.detail-chart-line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.detail-chart-base {
+  stroke: #9ca3af;
+  stroke-width: 1;
+  stroke-dasharray: 1.5 4.5;
+  opacity: 0.8;
+  stroke-linecap: round;
+}
+
+.detail-chart-guide {
+  stroke: #d7dde5;
+  stroke-width: 1;
+}
+
+.detail-chart-hover-guide {
+  stroke: #94a3b8;
+  stroke-width: 1;
+  stroke-dasharray: 1.5 4.5;
+  stroke-linecap: round;
+}
+
+.detail-chart-hover-dot {
+  fill: #ffffff;
+  stroke-width: 1.8;
+}
+
+.detail-chart-extreme-dot {
+  fill: #ffffff;
+  stroke-width: 1.4;
+}
+
+.detail-chart-extreme-label {
+  font-size: 9px;
+  fill: #64748b;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.detail-chart-tooltip-bg {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 0.8;
+}
+
+.detail-chart-tooltip {
+  font-size: 9px;
+  fill: #475569;
+  text-anchor: middle;
+  font-weight: 600;
+}
+
+.detail-chart-zero {
+  font-size: 10px;
+  fill: #6b7280;
+  text-anchor: end;
+  font-weight: 600;
+}
+
+.detail-chart-label {
+  font-size: 10px;
+  fill: #6b7280;
+}
+
+.detail-chart-label-center {
+  text-anchor: middle;
+}
+
+.detail-chart-label-right {
+  text-anchor: end;
+}
+
+.detail-stats-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.detail-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 6px;
+}
+
+.detail-stat .label {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.detail-stat .value {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .qr-image {
   display: block;
   width: 110px;
@@ -1072,10 +1317,66 @@ button:hover {
   object-fit: contain;
 }
 
+/* 五星支持条 */
+.review-strip {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #efe5cb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fffefb, #fff9ef);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-copy {
+  min-width: 0;
+}
+
+.review-title {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.review-stars {
+  margin-top: 4px;
+  color: #f59e0b;
+  font-size: 16px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.review-btn {
+  flex: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #7c4a03;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.review-btn:hover {
+  transform: none;
+  box-shadow: none;
+  background: #6a3f03;
+}
+
 .modal-footnote {
   margin-top: 18px;
   color: #576578;
   font-size: 12px;
+}
+
+.detail-loading,
+.detail-error,
+.detail-chart-empty {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  padding: 40px 10px;
 }
 
 .bell-icon {
@@ -1099,6 +1400,7 @@ button:hover {
   font-size: 18px;
 }
 
+/* 底部状态提示条 */
 #status {
   position: fixed;
   bottom: -40px;
