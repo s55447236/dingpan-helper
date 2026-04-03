@@ -52,6 +52,7 @@ const INCENSE_BLESSINGS = [
 ];
 
 const searchInput = document.getElementById("search-input");
+const searchClearBtn = document.getElementById("search-clear-btn");
 const searchResultsEl = document.getElementById("search-results");
 const watchlistEl = document.getElementById("watchlist");
 const indexesEl = document.getElementById("indexes");
@@ -464,7 +465,71 @@ function getTradingOffset(timeText) {
   return 240;
 }
 
-function buildTrendSvg(points, preClose) {
+function getMarketSession(market) {
+  if (market === "US") {
+    return {
+      openMinutes: 21 * 60 + 30,
+      closeMinutes: 4 * 60,
+      crossMidnight: true,
+      totalMinutes: 390,
+      marks: [
+        { label: "21:30", offset: 0, anchor: "start" },
+        { label: "00:00", offset: 150, anchor: "middle" },
+        { label: "04:00", offset: 390, anchor: "end" },
+      ],
+    };
+  }
+
+  if (market === "HK") {
+    return {
+      openMinutes: 9 * 60 + 30,
+      closeMinutes: 16 * 60,
+      crossMidnight: false,
+      totalMinutes: 390,
+      marks: [
+        { label: "09:30", offset: 0, anchor: "start" },
+        { label: "12:00", offset: 150, anchor: "middle" },
+        { label: "16:00", offset: 390, anchor: "end" },
+      ],
+    };
+  }
+
+  return {
+    openMinutes: 9 * 60 + 30,
+    closeMinutes: 15 * 60,
+    crossMidnight: false,
+    totalMinutes: 240,
+    marks: [
+      { label: "09:30", offset: 0, anchor: "start" },
+      { label: "10:30", offset: 60, anchor: "middle" },
+      { label: "11:30", offset: 120, anchor: "middle" },
+      { label: "14:00", offset: 180, anchor: "middle" },
+      { label: "15:00", offset: 240, anchor: "end" },
+    ],
+  };
+}
+
+function getSessionOffset(timeText, session) {
+  const [hour, minute] = String(timeText)
+    .split(":")
+    .map((item) => Number(item));
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return 0;
+
+  let totalMinutes = hour * 60 + minute;
+  let openMinutes = session.openMinutes;
+  let closeMinutes = session.closeMinutes;
+
+  if (session.crossMidnight) {
+    if (totalMinutes < openMinutes) totalMinutes += 24 * 60;
+    closeMinutes += 24 * 60;
+  }
+
+  if (totalMinutes <= openMinutes) return 0;
+  if (totalMinutes >= closeMinutes) return session.totalMinutes;
+  return totalMinutes - openMinutes;
+}
+
+function buildTrendSvg(points, preClose, market) {
   if (!points.length) {
     return '<div class="detail-chart-empty">今日暂无分时数据</div>';
   }
@@ -483,15 +548,16 @@ function buildTrendSvg(points, preClose) {
   const range = Math.max(max - min, 0.01);
   const plotWidth = width - paddingX * 2;
   const plotHeight = height - paddingY * 2;
-  const totalTradingMinutes = 240;
-  const getX = (timeText) => paddingX + (getTradingOffset(timeText) / totalTradingMinutes) * plotWidth;
+  const session = getMarketSession(market);
+  const totalTradingMinutes = session.totalMinutes;
+  const getX = (timeText) => paddingX + (getSessionOffset(timeText, session) / totalTradingMinutes) * plotWidth;
   const getY = (price) =>
     paddingY + ((max - price) / range) * plotHeight;
 
   const line = points
     .map((point) => `${getX(point.time)},${getY(point.price ?? min)}`)
     .join(" ");
-  const lastPointX = getX(points[points.length - 1]?.time || "09:30");
+  const lastPointX = getX(points[points.length - 1]?.time || session.marks[0].label);
   const area = `${paddingX},${height - paddingY} ${line} ${lastPointX},${height - paddingY}`;
   const baseLineY = preClose !== null && preClose !== undefined ? getY(preClose) : height / 2;
   const lastPrice = points[points.length - 1]?.price ?? validPrices[validPrices.length - 1];
@@ -500,14 +566,7 @@ function buildTrendSvg(points, preClose) {
   const fillStart = isUp ? "rgba(220,38,38,0.22)" : "rgba(22,163,74,0.20)";
   const fillEnd = isUp ? "rgba(220,38,38,0.03)" : "rgba(22,163,74,0.03)";
 
-  const lastOffset = getTradingOffset(points[points.length - 1]?.time || "09:30");
-  const timeMarks = [
-    { label: "09:30", offset: 0, anchor: "start" },
-    { label: "10:30", offset: 60, anchor: "middle" },
-    { label: "11:30", offset: 120, anchor: "middle" },
-    { label: "14:00", offset: 180, anchor: "middle" },
-    { label: "15:00", offset: 240, anchor: "end" },
-  ];
+  const timeMarks = session.marks;
 
   const hoverIndex = state.detail.hoverIndex;
   const hoverPoint =
@@ -626,7 +685,7 @@ function renderDetailModal() {
       <div class="detail-time">${hoverPoint ? hoverPoint.time : "今日最新"}</div>
     </div>
     <div class="detail-chart-card">
-      ${buildTrendSvg(detail.trends, detail.preClose)}
+      ${buildTrendSvg(detail.trends, detail.preClose, getMarketLabel(detail.symbol, detail.secid))}
     </div>
     <div class="detail-stats-grid">
       <div class="detail-stat"><span class="label">昨收</span><span class="value">${formatPrice(detail.preClose)}</span></div>
@@ -646,17 +705,18 @@ function renderDetailModal() {
 function bindDetailChartHover(detail) {
   const svg = detailBodyEl.querySelector(".detail-chart-svg");
   if (!svg || !detail.trends.length) return;
+  const session = getMarketSession(getMarketLabel(detail.symbol, detail.secid));
 
   const updateHover = (clientX) => {
     const rect = svg.getBoundingClientRect();
     const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
     const ratio = rect.width === 0 ? 0 : x / rect.width;
-    const tradingOffset = ratio * 240;
+    const tradingOffset = ratio * session.totalMinutes;
     let nearestIndex = 0;
     let nearestDistance = Infinity;
 
     detail.trends.forEach((point, index) => {
-      const distance = Math.abs(getTradingOffset(point.time) - tradingOffset);
+      const distance = Math.abs(getSessionOffset(point.time, session) - tradingOffset);
       if (distance < nearestDistance) {
         nearestDistance = distance;
         nearestIndex = index;
@@ -946,10 +1006,15 @@ function closePraySearch() {
 }
 
 let searchTimer = null;
+function updateSearchClearButton() {
+  searchClearBtn.classList.toggle("hidden", !searchInput.value.trim());
+}
+
 function bindSearch() {
   searchInput.addEventListener("input", () => {
     clearTimeout(searchTimer);
     const val = searchInput.value.trim();
+    updateSearchClearButton();
     if (!val) {
       searchResultsEl.innerHTML = "";
       searchCardEl.classList.remove("has-results");
@@ -957,6 +1022,15 @@ function bindSearch() {
     }
     searchCardEl.classList.add("has-results");
     searchTimer = setTimeout(() => searchStock(val), 350);
+  });
+
+  searchClearBtn.addEventListener("click", () => {
+    clearTimeout(searchTimer);
+    searchInput.value = "";
+    searchResultsEl.innerHTML = "";
+    searchCardEl.classList.remove("has-results");
+    updateSearchClearButton();
+    searchInput.focus();
   });
 }
 
@@ -1260,6 +1334,7 @@ function bindSearchResultsClick() {
       searchInput.value = "";
       searchResultsEl.innerHTML = "";
       searchCardEl.classList.remove("has-results");
+      updateSearchClearButton();
       showStatus("已上供");
       return;
     }
@@ -1280,6 +1355,7 @@ function bindSearchResultsClick() {
     searchInput.value = "";
     searchResultsEl.innerHTML = "";
     searchCardEl.classList.remove("has-results");
+    updateSearchClearButton();
     refreshQuotes(true);
     showStatus("已添加关注");
   });
@@ -1372,6 +1448,7 @@ function bindModal() {
 
 function renderSearchResultsFromInput() {
   const value = searchInput.value.trim();
+  updateSearchClearButton();
   if (!value) {
     searchResultsEl.innerHTML = "";
     searchCardEl.classList.remove("has-results");
@@ -1452,6 +1529,7 @@ async function init() {
   bindPraySearch();
   bindModal();
   bindActions();
+  updateSearchClearButton();
   deityVideoEl.addEventListener("ended", stopDeityVideo);
   deityVideoEl.addEventListener("error", stopDeityVideo);
   deityVideoEl.addEventListener("loadeddata", () => {

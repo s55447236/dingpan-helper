@@ -261,6 +261,18 @@ button:hover {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px 10px;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.search-box:hover {
+  background: #ffffff;
+  border-color: #d7deea;
+}
+
+.search-box:focus-within {
+  background: #ffffff;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
 .search-box input {
@@ -269,6 +281,31 @@ button:hover {
   background: transparent;
   outline: none;
   font-size: 13px;
+}
+
+.search-clear {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #94a3b8;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 400;
+  flex: none;
+}
+
+.search-clear:hover,
+.search-clear:focus-visible {
+  transform: none;
+  box-shadow: none;
+  background: #eef2f7;
+  color: #475569;
 }
 
 .search-icon {
@@ -423,6 +460,13 @@ button:hover {
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.stock-card:hover,
+.stock-card:focus-within {
+  border-color: #dbe7fb;
+  background: #fbfdff;
 }
 
 .stock-header {
@@ -1124,6 +1168,14 @@ button:hover {
   font-size: 20px;
   line-height: 1;
   font-weight: 200;
+}
+
+.modal-close:hover,
+.modal-close:focus-visible {
+  transform: none;
+  box-shadow: none;
+  background: #f3f4f6;
+  color: #475569;
 }
 
 .modal-title {
