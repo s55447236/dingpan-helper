@@ -443,11 +443,21 @@ button:hover {
   gap: 10px;
   margin-top: 10px;
   overflow: visible;
+  flex: 1;
 }
 
 /* 我的关注卡片外层 */
 #watch-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+#watchlist > .empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 单只股票卡片 */
@@ -1561,7 +1571,7 @@ button:hover {
   text-align: center;
   padding: 12px;
   color: #9ca3af;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 /* 底部状态提示条 */

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "盯盘神器（盯盘助手） - 摸鱼看盘小帮手（财神保佑一直红）",
-  "description": "摸鱼也能快速看盘，愿你自选一直红。支持指数查看、股票关注、目标价提醒和浏览器通知，适合上班场景快速盯盘。",
+  "name": "股票神器Stocks（股票盯盘助手） - 摸鱼看盘小帮手",
+  "description": "让股票盯盘更轻松。支持指数查看、自选股关注、目标价提醒和浏览器通知，适合上班时快速看盘并及时接收提醒。。",
   "version": "1.1.7",
   "icons": {
     "16": "assets/icon-16.png",
@@ -21,7 +21,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "盯盘助手",
+    "default_title": "股票神器Stocks",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "assets/icon-16.png",

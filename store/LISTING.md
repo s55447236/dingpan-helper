@@ -1,13 +1,13 @@
 # Chrome Web Store Listing Draft
 
 ## Name
-盯盘助手
+盯盘助手 | 股票盯盘助手 | Stocks Alert
 
 ## Summary
-关注指数和股票，设置目标价提醒并接收浏览器通知。
+关注指数和股票，设置目标价提醒并接收浏览器通知，适合日常 stock watching。
 
 ## Description
-盯盘助手是一个轻量的 Chrome 扩展，用于跟踪指数和个股行情，并在价格到达或穿过目标价时提醒你。
+盯盘助手是一个轻量的 Chrome 扩展，用于跟踪指数和个股行情，并在价格到达或穿过目标价时提醒你。它也是一个实用的 stocks alert / stock watchlist 小工具。
 
 核心功能：
 - 查看上证、深证、创业板指数实时行情
