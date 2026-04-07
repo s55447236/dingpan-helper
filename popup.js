@@ -1,23 +1,4 @@
-const CN_INDEX_SYMBOLS = ["000001.SS", "399001.SZ", "399006.SZ"];
-const US_INDEX_SYMBOLS = ["NDX", "SPX", "DJIA"];
-const INDEX_LABELS = {
-  zh: {
-    "000001.SS": "上证指数",
-    "399001.SZ": "深证成指",
-    "399006.SZ": "创业板指",
-    NDX: "纳斯达克",
-    SPX: "标普500",
-    DJIA: "道琼斯",
-  },
-  en: {
-    "000001.SS": "SSE Composite",
-    "399001.SZ": "SZSE Component",
-    "399006.SZ": "ChiNext",
-    NDX: "Nasdaq",
-    SPX: "S&P 500",
-    DJIA: "Dow Jones",
-  },
-};
+const INDEX_SYMBOLS = ["000001.SS", "399001.SZ", "399006.SZ"];
 const DEITY_KEYS = ["caishen", "guangong", "milefo"];
 const LANGUAGE_STORAGE_KEY = "appLanguage";
 const SUPPORTED_LANGUAGES = ["zh", "en"];
@@ -227,7 +208,7 @@ const TRANSLATIONS = {
       targetInputPrefix: "Enter a price, e.g. {price}",
     },
     pray: {
-      searchTitle: "Search stocks for the altar",
+      searchTitle: "Choose stocks for the altar",
       searchPlaceholder: "Enter ticker or company name",
       overlayEmpty: "No watched stocks yet. Add some in Market Watch, or search directly here.",
       alreadyOffered: "✓ Added",
@@ -777,14 +758,12 @@ async function playDeityVideo() {
 
 function renderIndexes(quotes) {
   indexesEl.innerHTML = "";
-  const activeSymbols = state.language === "en" ? US_INDEX_SYMBOLS : CN_INDEX_SYMBOLS;
-  activeSymbols.forEach((sym) => {
+  INDEX_SYMBOLS.forEach((sym) => {
     const q = quotes[sym];
-    const displayName = INDEX_LABELS[state.language]?.[sym] || q?.name || sym;
     const item = document.createElement("div");
     item.className = "index-item";
     item.innerHTML = `
-      <div class="index-name">${displayName}</div>
+      <div class="index-name">${q?.name || sym}</div>
       <div class="index-price ${changeClass(q?.changePercent)}">${formatPrice(q?.price)}</div>
       <div class="index-change ${changeClass(q?.changePercent)}">${formatPercent(q?.changePercent)}</div>
     `;
