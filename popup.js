@@ -1,55 +1,338 @@
-const INDEX_SYMBOLS = ["000001.SS", "399001.SZ", "399006.SZ"];
+const CN_INDEX_SYMBOLS = ["000001.SS", "399001.SZ", "399006.SZ"];
+const US_INDEX_SYMBOLS = ["NDX", "SPX", "DJIA"];
+const INDEX_LABELS = {
+  zh: {
+    "000001.SS": "上证指数",
+    "399001.SZ": "深证成指",
+    "399006.SZ": "创业板指",
+    NDX: "纳斯达克",
+    SPX: "标普500",
+    DJIA: "道琼斯",
+  },
+  en: {
+    "000001.SS": "SSE Composite",
+    "399001.SZ": "SZSE Component",
+    "399006.SZ": "ChiNext",
+    NDX: "Nasdaq",
+    SPX: "S&P 500",
+    DJIA: "Dow Jones",
+  },
+};
 const DEITY_KEYS = ["caishen", "guangong", "milefo"];
+const LANGUAGE_STORAGE_KEY = "appLanguage";
+const SUPPORTED_LANGUAGES = ["zh", "en"];
 const DEITIES = {
   caishen: {
-    name: "财神爷",
-    copy: "愿今日红红火火，账户长虹。",
+    nameKey: "deities.caishen.name",
+    copyKey: "deities.caishen.copy",
     image: "assets/caishen.png",
     video: "assets/caishen.mp4",
   },
   guangong: {
-    name: "关公",
-    copy: "愿持仓稳如山，关键位不破。",
+    nameKey: "deities.guangong.name",
+    copyKey: "deities.guangong.copy",
     image: "assets/guanyu.png",
     video: "assets/guanyu.mp4",
   },
   milefo: {
-    name: "弥勒佛",
-    copy: "愿心态放松，回撤不慌。",
+    nameKey: "deities.milefo.name",
+    copyKey: "deities.milefo.copy",
     image: "assets/milefo.png",
     video: "assets/milefo.mp4",
   },
 };
-const INCENSE_BLESSINGS = [
-  "愿今日红红火火，账户长虹。",
-  "愿所盯皆上涨，所买皆有回响。",
-  "愿开盘有喜，收盘更喜。",
-  "愿今天一路飘红，持仓节节高。",
-  "愿资金如潮水，净值步步升。",
-  "愿回撤收敛，利润扩张。",
-  "愿关键位不破，强势股不落。",
-  "愿低吸有肉，高抛有度。",
-  "愿盘中少惊吓，尾盘多惊喜。",
-  "愿热点常在，自选常红。",
-  "愿趋势向上，账户向阳。",
-  "愿大盘稳住，个股起舞。",
-  "愿今日不追高，也能吃大肉。",
-  "愿红柱连连，绿盘远远。",
-  "愿止盈从容，止损果断，结果都好。",
-  "愿每次上香，都换一次新高。",
-  "愿龙头不倒，仓位不慌。",
-  "愿量价齐升，收益齐来。",
-  "愿东风常在，持仓常红。",
-  "愿早盘埋伏，午后开花。",
-  "愿买点更准，卖点更稳。",
-  "愿浮亏退散，盈利上岸。",
-  "愿今日看盘不白看，明日收益有交代。",
-  "愿行情配合，耐心有报。",
-  "愿顺势而为，账户生辉。",
-  "愿消息面平静，K线面漂亮。",
-  "愿每次抄底都不抄在半山腰。",
-  "愿主升浪常来，震荡市少来。",
-];
+const TRANSLATIONS = {
+  zh: {
+    appTitle: "盯盘助手",
+    actions: {
+      authorInfo: "作者信息",
+      manualRefresh: "手动刷新",
+      clearSearch: "清空搜索",
+      close: "关闭",
+      previousDeity: "上一个神位",
+      nextDeity: "下一个神位",
+      addOffering: "上供",
+      burnIncense: "上香",
+      addWatch: "关注",
+      removeWatch: "移除关注",
+      alertReminder: "目标价提醒",
+      setTarget: "设置目标价",
+      deleteTarget: "删除目标价",
+      confirm: "确定",
+      remove: "移出",
+      giveFiveStars: "去给个 5 星",
+    },
+    hero: {
+      watchSub: "实时行情 · 价格提醒 · 浏览器通知",
+      praySub: "财神保佑 · 上香祈福 · 三个供位",
+      lastUpdated: "上次：",
+    },
+    mode: {
+      watch: "盯盘助手",
+      pray: "财神保佑",
+      badge: "旺",
+    },
+    watchlist: {
+      title: "我的关注",
+      countPrefix: "已关注",
+      countSuffix: "只",
+      empty: "暂无关注，搜索股票后添加",
+      searchPlaceholder: "输入股票代码或名称搜索",
+      targetPrice: "目标价",
+      targetInputPrefix: "请输入，如 {price}",
+    },
+    pray: {
+      searchTitle: "搜索股票上供",
+      searchPlaceholder: "输入股票代码或名称",
+      overlayEmpty: "暂无关注股票，先去盯盘助手里添加关注，或直接搜索上供",
+      alreadyOffered: "✓ 已上供",
+      incenseCount: "累计香火：",
+      incenseUnit: "次",
+      altarBurnerAlt: "香炉",
+    },
+    modals: {
+      qrTitle: "供位已满",
+      qrCopy: "当前最多只能上供三只股票。想继续加票，欢迎扫码联系作者交流。",
+      qrFootnote: "扫码备注来意，我会尽快回复。",
+      infoTitle: "联系开发者",
+      settingsTitle: "系统设置",
+      language: "语言",
+      wechatWithPhone: "Zhang Xumeng / TEL:18612033945（同微信）",
+      developerCardTitle: "微信联系",
+      developerCardCopy: "加我反馈问题或提出建议",
+      supportCardTitle: "支持一下",
+      supportCardCopy: "欢迎金主请我喝杯咖啡",
+      reviewTitle: "喜欢这个插件？",
+      infoFootnote: "感谢支持，祝你自选常红、账户长虹。",
+    },
+    detail: {
+      latest: "今日最新",
+      loading: "正在加载今日行情详情...",
+      empty: "今日暂无分时数据",
+      preClose: "昨收",
+      open: "今开",
+      high: "最高",
+      low: "最低",
+      volume: "成交量",
+      amount: "成交额",
+      amplitude: "振幅",
+      marketCap: "总市值",
+      unsupported: "这只股票暂不支持查看详情",
+      loadFailed: "加载详情失败",
+    },
+    status: {
+      networkError: "网络异常",
+      watchRefreshFailed: "盯盘页刷新失败，供位行情已单独更新",
+      prayRefreshFailed: "盯盘页已刷新，供位行情稍后重试",
+      refreshed: "已刷新",
+      targetInvalid: "请输入两位小数的目标价",
+      targetDuplicate: "这个目标价已经在监控中",
+      targetMustBeNumber: "目标价必须是数字，保留两位小数",
+      alreadyOnAltar: "这只已经在供位上",
+      alreadyWatching: "已在关注列表",
+      addedWatch: "已添加关注",
+      addedOffering: "已上供",
+    },
+    search: {
+      empty: "暂无结果",
+      searchFailed: "搜索失败",
+      searchError: "搜索异常",
+      watched: "✓ 已关注",
+      requestFailed: "请求失败",
+    },
+    labels: {
+      targetReached: "已到目标价",
+      monitoring: "监控中",
+      wechatQrAlt: "微信二维码",
+      developerQrAlt: "作者微信二维码",
+      paymentQrAlt: "收款码",
+    },
+    market: {
+      volumeYi: "{value}亿",
+      volumeWan: "{value}万",
+    },
+    deities: {
+      caishen: { name: "财神爷", copy: "愿今日红红火火，账户长虹。" },
+      guangong: { name: "关公", copy: "愿持仓稳如山，关键位不破。" },
+      milefo: { name: "弥勒佛", copy: "愿心态放松，回撤不慌。" },
+    },
+    blessings: [
+      "愿今日红红火火，账户长虹。",
+      "愿所盯皆上涨，所买皆有回响。",
+      "愿开盘有喜，收盘更喜。",
+      "愿今天一路飘红，持仓节节高。",
+      "愿资金如潮水，净值步步升。",
+      "愿回撤收敛，利润扩张。",
+      "愿关键位不破，强势股不落。",
+      "愿低吸有肉，高抛有度。",
+      "愿盘中少惊吓，尾盘多惊喜。",
+      "愿热点常在，自选常红。",
+      "愿趋势向上，账户向阳。",
+      "愿大盘稳住，个股起舞。",
+      "愿今日不追高，也能吃大肉。",
+      "愿红柱连连，绿盘远远。",
+      "愿止盈从容，止损果断，结果都好。",
+      "愿每次上香，都换一次新高。",
+      "愿龙头不倒，仓位不慌。",
+      "愿量价齐升，收益齐来。",
+      "愿东风常在，持仓常红。",
+      "愿早盘埋伏，午后开花。",
+      "愿买点更准，卖点更稳。",
+      "愿浮亏退散，盈利上岸。",
+      "愿今日看盘不白看，明日收益有交代。",
+      "愿行情配合，耐心有报。",
+      "愿顺势而为，账户生辉。",
+      "愿消息面平静，K线面漂亮。",
+      "愿每次抄底都不抄在半山腰。",
+      "愿主升浪常来，震荡市少来。",
+    ],
+  },
+  en: {
+    appTitle: "Market Watch",
+    actions: {
+      authorInfo: "Developer info",
+      manualRefresh: "Refresh",
+      clearSearch: "Clear search",
+      close: "Close",
+      previousDeity: "Previous altar",
+      nextDeity: "Next altar",
+      addOffering: "Offer",
+      burnIncense: "Pray",
+      addWatch: "Add",
+      removeWatch: "Remove",
+      alertReminder: "Price alert",
+      setTarget: "Set target price",
+      deleteTarget: "Delete target price",
+      confirm: "Confirm",
+      remove: "Remove",
+      giveFiveStars: "Leave 5 stars",
+    },
+    hero: {
+      watchSub: "Live Quotes · Alerts · Notifications",
+      praySub: "Fortune Blessing · Incense · 3 Lucky picks",
+      lastUpdated: "Last:",
+    },
+    mode: {
+      watch: "Stock",
+      pray: "Fortune",
+      badge: "Lucky",
+    },
+    watchlist: {
+      title: "My Watchlist",
+      countPrefix: "Watching",
+      countSuffix: "",
+      empty: "No stocks yet. Search and add one first.",
+      searchPlaceholder: "Search by ticker or company name",
+      targetPrice: "Target",
+      targetInputPrefix: "Enter a price, e.g. {price}",
+    },
+    pray: {
+      searchTitle: "Search stocks for the altar",
+      searchPlaceholder: "Enter ticker or company name",
+      overlayEmpty: "No watched stocks yet. Add some in Market Watch, or search directly here.",
+      alreadyOffered: "✓ Added",
+      incenseCount: "Total Prayers:",
+      incenseUnit: "",
+      altarBurnerAlt: "Incense burner",
+    },
+    modals: {
+      qrTitle: "Altar is full",
+      qrCopy: "You can place up to three stocks on the altar. Scan the QR code to contact the developer if you want to add more.",
+      qrFootnote: "Add a short note when you scan. I will reply soon.",
+      infoTitle: "Contact Developer",
+      settingsTitle: "System Settings",
+      language: "Language",
+      wechatWithPhone: "Zhang Xumeng / TEL:18612033945 (WeChat)",
+      developerCardTitle: "WeChat",
+      developerCardCopy: "Send feedback or suggestions",
+      supportCardTitle: "Support",
+      supportCardCopy: "Buy me a coffee if this helps",
+      reviewTitle: "Enjoy this extension?",
+      infoFootnote: "Thanks for the support. Wishing you a green account and strong picks.",
+    },
+    detail: {
+      latest: "Latest",
+      loading: "Loading today's intraday details...",
+      empty: "No intraday data today",
+      preClose: "Prev close",
+      open: "Open",
+      high: "High",
+      low: "Low",
+      volume: "Volume",
+      amount: "Turnover",
+      amplitude: "Amplitude",
+      marketCap: "Market cap",
+      unsupported: "Details are not available for this stock yet",
+      loadFailed: "Failed to load details",
+    },
+    status: {
+      networkError: "Network error",
+      watchRefreshFailed: "Watchlist refresh failed, altar quotes updated separately",
+      prayRefreshFailed: "Watchlist refreshed, altar quotes will retry later",
+      refreshed: "Refreshed",
+      targetInvalid: "Enter a target price with up to two decimals",
+      targetDuplicate: "This target price is already being monitored",
+      targetMustBeNumber: "Target price must be numeric and keep two decimals",
+      alreadyOnAltar: "This stock is already on the altar",
+      alreadyWatching: "This stock is already in the watchlist",
+      addedWatch: "Added to watchlist",
+      addedOffering: "Added to altar",
+    },
+    search: {
+      empty: "No results",
+      searchFailed: "Search failed",
+      searchError: "Search error",
+      watched: "✓ Added",
+      requestFailed: "Request failed",
+    },
+    labels: {
+      targetReached: "Target reached",
+      monitoring: "Monitoring",
+      wechatQrAlt: "WeChat QR code",
+      developerQrAlt: "Developer WeChat QR code",
+      paymentQrAlt: "Payment QR code",
+    },
+    market: {
+      volumeYi: "{value}B",
+      volumeWan: "{value}W",
+    },
+    deities: {
+      caishen: { name: "God of Wealth", copy: "May the market glow green and your account stay strong." },
+      guangong: { name: "Guan Gong", copy: "May your holdings stay steady and key levels hold." },
+      milefo: { name: "Maitreya", copy: "May you stay calm and never panic on pullbacks." },
+    },
+    blessings: [
+      "May the market glow green and your account stay strong.",
+      "May every stock you watch rise and every trade get a response.",
+      "May the open bring joy and the close bring even more.",
+      "May today's board stay green and your positions trend higher.",
+      "May capital flow in waves and your net value keep climbing.",
+      "May drawdowns shrink and profits expand.",
+      "May support hold and leaders stay strong.",
+      "May dip buys work and profit taking stay disciplined.",
+      "May intraday shocks be few and closing surprises be many.",
+      "May the hot themes stay alive and your list stay green.",
+      "May trends keep rising and your account face the sun.",
+      "May the index stay stable and your picks start dancing.",
+      "May you avoid chasing highs and still catch the move.",
+      "May green candles stack up and red screens stay away.",
+      "May exits be calm, stops be decisive, and outcomes be kind.",
+      "May every incense burn lead to a new high.",
+      "May the leaders stand firm and your sizing stay calm.",
+      "May price and volume rise together with your returns.",
+      "May tailwinds stay with you and your holdings stay green.",
+      "May morning setups bloom in the afternoon.",
+      "May your buys get sharper and your sells get steadier.",
+      "May floating losses fade and profits come ashore.",
+      "May today's chart watching pay off tomorrow.",
+      "May the market cooperate and reward your patience.",
+      "May you follow the trend and let your account shine.",
+      "May the news stay calm and the candles stay beautiful.",
+      "May every dip buy avoid the middle of the mountain.",
+      "May primary uptrends visit often and choppy ranges stay away.",
+    ],
+  },
+};
 
 const searchInput = document.getElementById("search-input");
 const searchClearBtn = document.getElementById("search-clear-btn");
@@ -75,10 +358,16 @@ const praySearchInputEl = document.getElementById("pray-search-input");
 const praySearchResultsEl = document.getElementById("pray-search-results");
 const detailModalEl = document.getElementById("detail-modal");
 const detailBodyEl = document.getElementById("detail-body");
+const languageSelectEl = document.getElementById("language-select");
+const qrModalImageEl = document.getElementById("qr-modal-image");
+const developerQrImageEl = document.getElementById("developer-qr-image");
+const supportQrImageEl = document.getElementById("support-qr-image");
 
 const state = {
   watchlist: [],
   lastQuotes: {},
+  miniTrends: {},
+  miniTrendPending: {},
   prayQuotes: {},
   draftTargets: {},
   activePopoverSymbol: null,
@@ -98,6 +387,8 @@ const state = {
     data: null,
     hoverIndex: null,
   },
+  language: "zh",
+  languagePreference: "system",
 };
 let isDeityVideoPlaying = false;
 
@@ -109,6 +400,141 @@ const BELL_ICON = `
 `;
 const STORE_REVIEW_URL =
   "https://chromewebstore.google.com/detail/%E7%9B%AF%E7%9B%98%E5%8A%A9%E6%89%8B-%E6%91%B8%E9%B1%BC%E7%9C%8B%E7%9B%98%E5%B0%8F%E5%B8%AE%E6%89%8B%EF%BC%88%E8%B4%A2%E7%A5%9E%E4%BF%9D%E4%BD%91%E4%B8%80%E7%9B%B4%E7%BA%A2%EF%BC%89/icdblaikjdibjifnoiklopllamiaafhg/reviews";
+
+function normalizeLanguage(language) {
+  if (!language) return null;
+  const base = String(language).toLowerCase().split("-")[0];
+  return SUPPORTED_LANGUAGES.includes(base) ? base : null;
+}
+
+function normalizeLanguagePreference(value) {
+  if (value === "system") return "system";
+  return normalizeLanguage(value);
+}
+
+function detectBrowserLanguage() {
+  const candidates = Array.isArray(navigator.languages) ? navigator.languages : [navigator.language];
+  for (const item of candidates) {
+    const normalized = normalizeLanguage(item);
+    if (normalized) return normalized;
+  }
+  return "zh";
+}
+
+function t(key, vars = {}) {
+  const dict = TRANSLATIONS[state.language] || TRANSLATIONS.zh;
+  const fallback = TRANSLATIONS.zh;
+  const resolve = (source) =>
+    key.split(".").reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : undefined), source);
+  let value = resolve(dict);
+  if (value === undefined) value = resolve(fallback);
+  if (typeof value !== "string") return value ?? key;
+  return value.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ""));
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = state.language === "en" ? "en" : "zh-CN";
+  document.title = t("appTitle");
+  document.getElementById("timestamp-label").textContent = t("hero.lastUpdated");
+  document.getElementById("watch-mode-btn").textContent = t("mode.watch");
+  document.getElementById("pray-mode-label").textContent = t("mode.pray");
+  document.getElementById("pray-mode-badge").textContent = t("mode.badge");
+  document.getElementById("watch-section-title").textContent = t("watchlist.title");
+  document.getElementById("watch-count-prefix").textContent = t("watchlist.countPrefix");
+  document.getElementById("watch-count-suffix").textContent = t("watchlist.countSuffix");
+  document.getElementById("pray-search-title").textContent = t("pray.searchTitle");
+  document.getElementById("incense-btn").textContent = t("actions.burnIncense");
+  document.getElementById("incense-count-label").textContent = t("pray.incenseCount");
+  document.getElementById("incense-count-unit").textContent = t("pray.incenseUnit");
+  document.getElementById("qr-modal-title").textContent = t("modals.qrTitle");
+  document.getElementById("qr-modal-copy").textContent = t("modals.qrCopy");
+  document.getElementById("qr-modal-footnote").textContent = t("modals.qrFootnote");
+  document.getElementById("settings-title").textContent = t("modals.settingsTitle");
+  document.getElementById("language-label").textContent = t("modals.language");
+  document.getElementById("info-modal-title").textContent = t("modals.infoTitle");
+  document.getElementById("info-contact").textContent = t("modals.wechatWithPhone");
+  document.getElementById("developer-card-title").textContent = t("modals.developerCardTitle");
+  document.getElementById("developer-card-copy").textContent = t("modals.developerCardCopy");
+  document.getElementById("support-card-title").textContent = t("modals.supportCardTitle");
+  document.getElementById("support-card-copy").textContent = t("modals.supportCardCopy");
+  document.getElementById("review-title").textContent = t("modals.reviewTitle");
+  document.getElementById("review-btn").textContent = t("actions.giveFiveStars");
+  document.getElementById("info-modal-footnote").textContent = t("modals.infoFootnote");
+  languageSelectEl.options[0].textContent = state.language === "en" ? "Follow system" : "跟随系统";
+  languageSelectEl.options[1].textContent = "中文";
+  languageSelectEl.options[2].textContent = "English";
+  searchInput.placeholder = t("watchlist.searchPlaceholder");
+  praySearchInputEl.placeholder = t("pray.searchPlaceholder");
+  languageSelectEl.value = state.languagePreference;
+  updateQrImages();
+
+  const infoBtn = document.getElementById("info-btn");
+  const refreshBtn = document.getElementById("refresh-btn");
+  const closeButtons = document.querySelectorAll(".modal-close, #close-pray-search");
+  infoBtn.title = t("actions.authorInfo");
+  infoBtn.setAttribute("aria-label", t("actions.authorInfo"));
+  refreshBtn.title = t("actions.manualRefresh");
+  refreshBtn.setAttribute("aria-label", t("actions.manualRefresh"));
+  searchClearBtn.title = t("actions.clearSearch");
+  document.getElementById("deity-prev").setAttribute("aria-label", t("actions.previousDeity"));
+  document.getElementById("deity-next").setAttribute("aria-label", t("actions.nextDeity"));
+  closeButtons.forEach((button) => {
+    button.title = t("actions.close");
+    button.setAttribute("aria-label", t("actions.close"));
+  });
+  document.querySelector('img[src="assets/incense-burner.png"]')?.setAttribute("alt", t("pray.altarBurnerAlt"));
+  qrModalImageEl?.setAttribute("alt", t("labels.developerQrAlt"));
+  developerQrImageEl?.setAttribute("alt", t("labels.wechatQrAlt"));
+  supportQrImageEl?.setAttribute("alt", t("labels.paymentQrAlt"));
+}
+
+async function saveLanguage() {
+  await chrome.storage.local.set({ [LANGUAGE_STORAGE_KEY]: state.languagePreference });
+}
+
+function getQrAssetPaths() {
+  if (state.language === "en") {
+    return {
+      developer: {
+        primary: "assets/developer-qr-en.png",
+        fallback: "assets/developer-qr.png",
+      },
+      support: {
+        primary: "assets/alipay-en.png",
+        fallback: "assets/alipay.png",
+      },
+    };
+  }
+
+  return {
+    developer: {
+      primary: "assets/developer-qr.png",
+      fallback: "assets/developer-qr.png",
+    },
+    support: {
+      primary: "assets/alipay.png",
+      fallback: "assets/alipay.png",
+    },
+  };
+}
+
+function setImageWithFallback(img, primarySrc, fallbackSrc) {
+  if (!img) return;
+  img.onerror = null;
+  img.src = primarySrc;
+  img.onerror = () => {
+    if (img.src.endsWith(fallbackSrc)) return;
+    img.onerror = null;
+    img.src = fallbackSrc;
+  };
+}
+
+function updateQrImages() {
+  const assets = getQrAssetPaths();
+  setImageWithFallback(qrModalImageEl, assets.developer.primary, assets.developer.fallback);
+  setImageWithFallback(developerQrImageEl, assets.developer.primary, assets.developer.fallback);
+  setImageWithFallback(supportQrImageEl, assets.support.primary, assets.support.fallback);
+}
 
 function makeAlertId() {
   return `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -234,8 +660,8 @@ function changeClass(val) {
 function formatLargeNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";
   const abs = Math.abs(value);
-  if (abs >= 1e8) return `${(value / 1e8).toFixed(2)}亿`;
-  if (abs >= 1e4) return `${(value / 1e4).toFixed(2)}万`;
+  if (abs >= 1e8) return t("market.volumeYi", { value: (value / 1e8).toFixed(2) });
+  if (abs >= 1e4) return t("market.volumeWan", { value: (value / 1e4).toFixed(2) });
   return `${Math.round(value)}`;
 }
 
@@ -260,17 +686,22 @@ async function loadState() {
     lastUpdated = null,
     popupMode = "watch",
     prayState = {},
+    [LANGUAGE_STORAGE_KEY]: storedLanguage = null,
   } = await chrome.storage.local.get({
     watchlist: [],
     lastQuotes: {},
     lastUpdated: null,
     popupMode: "watch",
     prayState: {},
+    [LANGUAGE_STORAGE_KEY]: null,
   });
   state.watchlist = normalizeWatchlist(watchlist);
   state.lastQuotes = lastQuotes;
   state.mode = popupMode === "pray" ? "pray" : "watch";
   state.pray = normalizePrayState(prayState);
+  state.languagePreference = normalizeLanguagePreference(storedLanguage) || "system";
+  state.language =
+    state.languagePreference === "system" ? detectBrowserLanguage() : state.languagePreference;
   if (lastUpdated) {
     lastUpdatedEl.textContent = new Date(lastUpdated).toLocaleTimeString();
   }
@@ -300,7 +731,8 @@ function updateFruitCount() {
 }
 
 function getRandomBlessing() {
-  return INCENSE_BLESSINGS[Math.floor(Math.random() * INCENSE_BLESSINGS.length)];
+  const blessings = TRANSLATIONS[state.language]?.blessings || TRANSLATIONS.zh.blessings;
+  return blessings[Math.floor(Math.random() * blessings.length)];
 }
 
 function rotateDeity(step) {
@@ -345,12 +777,14 @@ async function playDeityVideo() {
 
 function renderIndexes(quotes) {
   indexesEl.innerHTML = "";
-  INDEX_SYMBOLS.forEach((sym) => {
+  const activeSymbols = state.language === "en" ? US_INDEX_SYMBOLS : CN_INDEX_SYMBOLS;
+  activeSymbols.forEach((sym) => {
     const q = quotes[sym];
+    const displayName = INDEX_LABELS[state.language]?.[sym] || q?.name || sym;
     const item = document.createElement("div");
     item.className = "index-item";
     item.innerHTML = `
-      <div class="index-name">${q?.name || sym}</div>
+      <div class="index-name">${displayName}</div>
       <div class="index-price ${changeClass(q?.changePercent)}">${formatPrice(q?.price)}</div>
       <div class="index-change ${changeClass(q?.changePercent)}">${formatPercent(q?.changePercent)}</div>
     `;
@@ -363,10 +797,10 @@ function renderAlerts(stock, quote) {
     .map((alert) => {
       const hit = isAlertHit(quote?.price, alert.price);
       return `
-        <div class="target-tag ${hit ? "hit shake" : ""}" title="${hit ? "已到目标价" : "监控中"}">
+        <div class="target-tag ${hit ? "hit shake" : ""}" title="${hit ? t("labels.targetReached") : t("labels.monitoring")}">
           ${BELL_ICON}
           <span>${alert.price.toFixed(2)}</span>
-          <button class="target-tag-remove" data-symbol="${stock.symbol}" data-alert-id="${alert.id}" title="删除目标价">×</button>
+          <button class="target-tag-remove" data-symbol="${stock.symbol}" data-alert-id="${alert.id}" title="${t("actions.deleteTarget")}">×</button>
         </div>
       `;
     })
@@ -377,7 +811,7 @@ function renderWatchlist(quotes) {
   watchlistEl.innerHTML = "";
   updateStockCount();
   if (!state.watchlist.length) {
-    watchlistEl.innerHTML = '<div class="empty">暂无关注，搜索股票后添加</div>';
+    watchlistEl.innerHTML = `<div class="empty">${t("watchlist.empty")}</div>`;
     return;
   }
   state.watchlist.forEach((stock) => {
@@ -396,16 +830,21 @@ function renderWatchlist(quotes) {
             <div class="stock-symbol">${stock.symbol}</div>
           </div>
         </div>
-        <div class="quote-side">
-          <div class="quote ${changeClass(q?.changePercent)}">
-            <span class="price">${formatPrice(q?.price)}</span>
-            <span class="change-text ${changeClass(q?.changePercent)}">${formatPercent(
-              q?.changePercent
-            )}</span>
+        <div class="stock-quote-area">
+          <div class="stock-mini-chart-slot">
+            ${buildMiniTrendSvg(state.miniTrends[stock.symbol], getMarketLabel(stock.symbol, stock.secid))}
+          </div>
+          <div class="quote-side">
+            <div class="quote ${changeClass(q?.changePercent)}">
+              <span class="price">${formatPrice(q?.price)}</span>
+              <span class="change-text ${changeClass(q?.changePercent)}">${formatPercent(
+                q?.changePercent
+              )}</span>
+            </div>
           </div>
           <div class="quote-actions-overlay">
-            <button class="bell-btn" data-symbol="${stock.symbol}" title="设置目标价">${BELL_ICON}<span>目标价提醒</span></button>
-            <button class="remove-stock-inline" data-symbol="${stock.symbol}" title="移除关注">移除关注</button>
+            <button class="bell-btn" data-symbol="${stock.symbol}" title="${t("actions.setTarget")}">${BELL_ICON}<span>${t("actions.alertReminder")}</span></button>
+            <button class="remove-stock-inline" data-symbol="${stock.symbol}" title="${t("actions.removeWatch")}">${t("actions.removeWatch")}</button>
           </div>
         </div>
       </div>
@@ -422,12 +861,12 @@ function renderWatchlist(quotes) {
         popoverOpen
           ? `<div class="target-popover">
               <div class="target-entry popover-entry">
-                <div class="target-popover-title">目标价</div>
-                <input class="target-input popover-input" type="number" step="0.10" data-symbol="${stock.symbol}" data-type="new-target" placeholder="请输入，如 ${formatPrice(q?.price) === "--" ? "35.20" : formatPrice(q?.price)}" value="${
+                <div class="target-popover-title">${t("watchlist.targetPrice")}</div>
+                <input class="target-input popover-input" type="number" step="0.10" data-symbol="${stock.symbol}" data-type="new-target" placeholder="${t("watchlist.targetInputPrefix", { price: formatPrice(q?.price) === "--" ? "35.20" : formatPrice(q?.price) })}" value="${
                   state.draftTargets[stock.symbol] ||
                   (q?.price !== null && q?.price !== undefined ? formatPrice(q.price) : "")
                 }">
-                <button class="confirm-target" data-symbol="${stock.symbol}">确定</button>
+                <button class="confirm-target" data-symbol="${stock.symbol}">${t("actions.confirm")}</button>
               </div>
             </div>`
           : ""
@@ -435,6 +874,7 @@ function renderWatchlist(quotes) {
     `;
     watchlistEl.appendChild(card);
   });
+  ensureMiniTrends();
 }
 
 function parseTrendPoint(trend) {
@@ -531,7 +971,7 @@ function getSessionOffset(timeText, session) {
 
 function buildTrendSvg(points, preClose, market) {
   if (!points.length) {
-    return '<div class="detail-chart-empty">今日暂无分时数据</div>';
+    return `<div class="detail-chart-empty">${t("detail.empty")}</div>`;
   }
 
   const width = 286;
@@ -540,7 +980,7 @@ function buildTrendSvg(points, preClose, market) {
   const paddingY = 10;
   const validPrices = points.map((item) => item.price).filter((item) => item !== null);
   if (!validPrices.length) {
-    return '<div class="detail-chart-empty">今日暂无分时数据</div>';
+    return `<div class="detail-chart-empty">${t("detail.empty")}</div>`;
   }
 
   const min = Math.min(...validPrices, preClose ?? validPrices[0]);
@@ -630,6 +1070,89 @@ function buildTrendSvg(points, preClose, market) {
   `;
 }
 
+function buildMiniTrendSvg(detail, market) {
+  if (!detail?.trends?.length) {
+    return `<div class="mini-trend mini-trend-placeholder"></div>`;
+  }
+
+  const points = detail.trends;
+  const width = 84;
+  const height = 32;
+  const paddingX = 2;
+  const paddingY = 3;
+  const validPrices = points.map((item) => item.price).filter((item) => item !== null);
+  if (!validPrices.length) {
+    return `<div class="mini-trend mini-trend-placeholder"></div>`;
+  }
+
+  const preClose = detail.preClose;
+  const min = Math.min(...validPrices, preClose ?? validPrices[0]);
+  const max = Math.max(...validPrices, preClose ?? validPrices[0]);
+  const range = Math.max(max - min, 0.01);
+  const plotWidth = width - paddingX * 2;
+  const plotHeight = height - paddingY * 2;
+  const session = getMarketSession(market);
+  const totalTradingMinutes = session.totalMinutes;
+  const getX = (timeText) => paddingX + (getSessionOffset(timeText, session) / totalTradingMinutes) * plotWidth;
+  const getY = (price) => paddingY + ((max - price) / range) * plotHeight;
+  const line = points
+    .map((point) => `${getX(point.time)},${getY(point.price ?? min)}`)
+    .join(" ");
+  const lastPrice = points[points.length - 1]?.price ?? validPrices[validPrices.length - 1];
+  const isUp = preClose !== null && preClose !== undefined ? lastPrice >= preClose : lastPrice >= validPrices[0];
+  const strokeColor = isUp ? "#dc2626" : "#16a34a";
+
+  return `
+    <svg class="mini-trend" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <polyline points="${line}" class="mini-trend-line" style="stroke:${strokeColor}"></polyline>
+    </svg>
+  `;
+}
+
+async function fetchMiniTrend(stock) {
+  const secid = stock.secid || inferSecid(stock.symbol);
+  if (!secid) return null;
+  const trendUrl = `https://push2.eastmoney.com/api/qt/stock/trends2/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f17&fields2=f51,f52,f53,f54,f55,f56,f57,f58&ut=b2884a393a59ad64002292a3e90d46a5&secid=${encodeURIComponent(
+    secid
+  )}&ndays=1&iscr=0&iscca=0`;
+  const trendRes = await fetchJson(trendUrl);
+  const trendData = trendRes?.data || {};
+  const trends = Array.isArray(trendData.trends) ? trendData.trends.map(parseTrendPoint) : [];
+  const currentQuote = state.lastQuotes[stock.symbol];
+  const preClose =
+    currentQuote?.price !== null &&
+    currentQuote?.price !== undefined &&
+    currentQuote?.change !== null &&
+    currentQuote?.change !== undefined
+      ? normalizePrice(currentQuote.price - currentQuote.change)
+      : normalizePrice(trendData.preClose);
+  return {
+    preClose,
+    trends,
+  };
+}
+
+function ensureMiniTrends() {
+  state.watchlist.forEach((stock) => {
+    if (state.miniTrends[stock.symbol] || state.miniTrendPending[stock.symbol]) return;
+    state.miniTrendPending[stock.symbol] = true;
+    fetchMiniTrend(stock)
+      .then((detail) => {
+        if (detail?.trends?.length) {
+          state.miniTrends[stock.symbol] = detail;
+          const card = watchlistEl.querySelector(`.stock-card[data-symbol="${stock.symbol}"] .stock-mini-chart-slot`);
+          if (card) {
+            card.innerHTML = buildMiniTrendSvg(detail, getMarketLabel(stock.symbol, stock.secid));
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        delete state.miniTrendPending[stock.symbol];
+      });
+  });
+}
+
 function renderDetailModal() {
   if (!state.detail.symbol) {
     document.body.classList.remove("modal-open");
@@ -644,7 +1167,7 @@ function renderDetailModal() {
   detailModalEl.classList.remove("hidden");
 
   if (state.detail.loading) {
-    detailBodyEl.innerHTML = '<div class="detail-loading">正在加载今日行情详情...</div>';
+    detailBodyEl.innerHTML = `<div class="detail-loading">${t("detail.loading")}</div>`;
     return;
   }
 
@@ -682,20 +1205,20 @@ function renderDetailModal() {
         <span>${formatSignedPrice(activeChange)}</span>
         <span>(${formatPercent(activeChangePercent)})</span>
       </div>
-      <div class="detail-time">${hoverPoint ? hoverPoint.time : "今日最新"}</div>
+      <div class="detail-time">${hoverPoint ? hoverPoint.time : t("detail.latest")}</div>
     </div>
     <div class="detail-chart-card">
       ${buildTrendSvg(detail.trends, detail.preClose, getMarketLabel(detail.symbol, detail.secid))}
     </div>
     <div class="detail-stats-grid">
-      <div class="detail-stat"><span class="label">昨收</span><span class="value">${formatPrice(detail.preClose)}</span></div>
-      <div class="detail-stat"><span class="label">今开</span><span class="value">${formatPrice(detail.open)}</span></div>
-      <div class="detail-stat"><span class="label">最高</span><span class="value">${formatPrice(detail.high)}</span></div>
-      <div class="detail-stat"><span class="label">最低</span><span class="value">${formatPrice(detail.low)}</span></div>
-      <div class="detail-stat"><span class="label">成交量</span><span class="value">${formatLargeNumber(detail.volume)}</span></div>
-      <div class="detail-stat"><span class="label">成交额</span><span class="value">${formatLargeNumber(detail.amount)}</span></div>
-      <div class="detail-stat"><span class="label">振幅</span><span class="value">${detail.amplitude === null ? "--" : `${Number(detail.amplitude).toFixed(2)}%`}</span></div>
-      <div class="detail-stat"><span class="label">总市值</span><span class="value">${formatLargeNumber(detail.marketCap)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.preClose")}</span><span class="value">${formatPrice(detail.preClose)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.open")}</span><span class="value">${formatPrice(detail.open)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.high")}</span><span class="value">${formatPrice(detail.high)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.low")}</span><span class="value">${formatPrice(detail.low)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.volume")}</span><span class="value">${formatLargeNumber(detail.volume)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.amount")}</span><span class="value">${formatLargeNumber(detail.amount)}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.amplitude")}</span><span class="value">${detail.amplitude === null ? "--" : `${Number(detail.amplitude).toFixed(2)}%`}</span></div>
+      <div class="detail-stat"><span class="label">${t("detail.marketCap")}</span><span class="value">${formatLargeNumber(detail.marketCap)}</span></div>
     </div>
   `;
 
@@ -738,7 +1261,7 @@ function bindDetailChartHover(detail) {
 
 async function fetchStockDetail(stock) {
   const secid = stock.secid || inferSecid(stock.symbol);
-  if (!secid) throw new Error("这只股票暂不支持查看详情");
+  if (!secid) throw new Error(t("detail.unsupported"));
 
   const quoteUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=${encodeURIComponent(
     secid
@@ -800,7 +1323,7 @@ async function openStockDetail(symbol) {
     state.detail = {
       symbol,
       loading: false,
-      error: error?.message || "加载详情失败",
+      error: error?.message || t("detail.loadFailed"),
       data: null,
       hoverIndex: null,
     };
@@ -821,8 +1344,8 @@ function closeDetailModal() {
 
 function renderDeityDisplay() {
   const deity = DEITIES[state.pray.deity];
-  deityNameEl.textContent = deity.name;
-  deityCopyEl.textContent = state.prayDisplayedCopy || deity.copy;
+  deityNameEl.textContent = t(deity.nameKey);
+  deityCopyEl.textContent = state.prayDisplayedCopy || t(deity.copyKey);
   if (deityVideoEl.dataset.deity !== state.pray.deity) {
     stopDeityVideo();
     deityVideoEl.src = deity.video;
@@ -834,7 +1357,7 @@ function renderDeityDisplay() {
 
 async function fetchJson(url) {
   const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`请求失败: ${resp.status}`);
+  if (!resp.ok) throw new Error(`${t("search.requestFailed")}: ${resp.status}`);
   return resp.json();
 }
 
@@ -898,7 +1421,7 @@ function renderAltarFruitSlots() {
           }</span>
           <span>${formatPercent(changePercent)}</span>
         </div>
-        <button class="altar-slot-remove" data-slot-index="${index}" title="移出">×</button>
+        <button class="altar-slot-remove" data-slot-index="${index}" title="${t("actions.remove")}">×</button>
       </div>`;
     })
     .join("");
@@ -914,11 +1437,11 @@ function renderMode() {
   watchCardEl.classList.toggle("hidden", inPrayMode);
   prayCardEl.classList.toggle("hidden", !inPrayMode);
   heroSubEl.textContent = inPrayMode
-    ? "财神保佑 · 上香祈福 · 三个供位"
-    : "实时行情 · 价格提醒 · 浏览器通知";
+    ? t("hero.praySub")
+    : t("hero.watchSub");
   searchInput.placeholder = inPrayMode
-    ? "输入股票代码或名称，加入供位"
-    : "输入股票代码或名称搜索";
+    ? t("pray.searchPlaceholder")
+    : t("watchlist.searchPlaceholder");
 }
 
 function renderPrayMode() {
@@ -953,16 +1476,16 @@ async function refreshQuotes(showToast = false) {
 
   if (!showToast) return;
   if (!refreshed) {
-    showStatus("网络异常");
+    showStatus(t("status.networkError"));
   } else if (
     watchResult.status === "rejected" ||
     (watchResult.status === "fulfilled" && (!watchResult.value?.ok || !watchResult.value?.quotes))
   ) {
-    showStatus("盯盘页刷新失败，供位行情已单独更新");
+    showStatus(t("status.watchRefreshFailed"));
   } else if (prayResult.status === "rejected") {
-    showStatus("盯盘页已刷新，供位行情稍后重试");
+    showStatus(t("status.prayRefreshFailed"));
   } else {
-    showStatus("已刷新");
+    showStatus(t("status.refreshed"));
   }
 }
 
@@ -1038,7 +1561,7 @@ function renderSearchResults(list) {
   searchResultsEl.innerHTML = "";
   searchCardEl.classList.add("has-results");
   if (!list.length) {
-    searchResultsEl.innerHTML = '<div class="empty">暂无结果</div>';
+    searchResultsEl.innerHTML = `<div class="empty">${t("search.empty")}</div>`;
     return;
   }
   list.forEach((item) => {
@@ -1057,15 +1580,15 @@ function renderSearchResults(list) {
       ${
         state.mode === "pray"
           ? prayed
-            ? '<span class="search-status followed">✓ 已上供</span>'
+            ? `<span class="search-status followed">${t("pray.alreadyOffered")}</span>`
             : `<button class="add" data-symbol="${item.symbol}" data-name="${
                 item.shortname || item.longname || ""
-              }" data-secid="${item.secid || ""}" data-mode="pray">上供</button>`
+              }" data-secid="${item.secid || ""}" data-mode="pray">${t("actions.addOffering")}</button>`
           : watched
-            ? '<span class="search-status followed">✓ 已关注</span>'
+            ? `<span class="search-status followed">${t("search.watched")}</span>`
             : `<button class="add" data-symbol="${item.symbol}" data-name="${
                 item.shortname || item.longname || ""
-              }" data-secid="${item.secid || ""}" data-mode="watch">关注</button>`
+              }" data-secid="${item.secid || ""}" data-mode="watch">${t("actions.addWatch")}</button>`
       }
     `;
     searchResultsEl.appendChild(row);
@@ -1087,8 +1610,7 @@ function renderPraySearchResults(list = null) {
   const sourceList = Array.isArray(list) ? list : getPraySearchFallbackList();
   praySearchResultsEl.innerHTML = "";
   if (!sourceList.length) {
-    praySearchResultsEl.innerHTML =
-      '<div class="empty">暂无关注股票，先去盯盘助手里添加关注，或直接搜索上供</div>';
+    praySearchResultsEl.innerHTML = `<div class="empty">${t("pray.overlayEmpty")}</div>`;
     return;
   }
   sourceList.forEach((item) => {
@@ -1105,10 +1627,10 @@ function renderPraySearchResults(list = null) {
       </div>
       ${
         prayed
-          ? '<span class="search-status followed">✓ 已上供</span>'
+          ? `<span class="search-status followed">${t("pray.alreadyOffered")}</span>`
           : `<button class="add" data-symbol="${item.symbol}" data-name="${
               item.shortname || item.longname || ""
-            }" data-secid="${item.secid || ""}" data-mode="pray-overlay">上供</button>`
+            }" data-secid="${item.secid || ""}" data-mode="pray-overlay">${t("actions.addOffering")}</button>`
       }
     `;
     praySearchResultsEl.appendChild(row);
@@ -1121,7 +1643,7 @@ async function searchStock(keyword) {
       keyword
     )}&type=14&token=D43BF722C8E33BDC906FB84D85E326E8&count=6`;
     const resp = await fetch(url);
-    if (!resp.ok) throw new Error("搜索失败");
+    if (!resp.ok) throw new Error(t("search.searchFailed"));
     const data = await resp.json();
     const quotes = (data?.QuotationCodeTable?.Data || []).map((item) => ({
       symbol: item.Code,
@@ -1132,7 +1654,7 @@ async function searchStock(keyword) {
     renderSearchResults(quotes);
   } catch (err) {
     searchCardEl.classList.add("has-results");
-    searchResultsEl.innerHTML = `<div class="empty">${err.message || "搜索异常"}</div>`;
+    searchResultsEl.innerHTML = `<div class="empty">${err.message || t("search.searchError")}</div>`;
   }
 }
 
@@ -1142,7 +1664,7 @@ async function searchPrayStock(keyword) {
       keyword
     )}&type=14&token=D43BF722C8E33BDC906FB84D85E326E8&count=8`;
     const resp = await fetch(url);
-    if (!resp.ok) throw new Error("搜索失败");
+    if (!resp.ok) throw new Error(t("search.searchFailed"));
     const data = await resp.json();
     const quotes = (data?.QuotationCodeTable?.Data || []).map((item) => ({
       symbol: item.Code,
@@ -1152,7 +1674,7 @@ async function searchPrayStock(keyword) {
     }));
     renderPraySearchResults(quotes);
   } catch (err) {
-    praySearchResultsEl.innerHTML = `<div class="empty">${err.message || "搜索异常"}</div>`;
+    praySearchResultsEl.innerHTML = `<div class="empty">${err.message || t("search.searchError")}</div>`;
   }
 }
 
@@ -1200,11 +1722,11 @@ function bindWatchlistEvents() {
       if (!stock) return;
       const nextPrice = normalizeAlertPrice(state.draftTargets[stock.symbol]);
       if (nextPrice === null) {
-        showStatus("请输入两位小数的目标价");
+        showStatus(t("status.targetInvalid"));
         return;
       }
       if (stock.alerts.some((item) => item.price === nextPrice)) {
-        showStatus("这个目标价已经在监控中");
+        showStatus(t("status.targetDuplicate"));
         return;
       }
       stock.alerts.push({ id: makeAlertId(), price: nextPrice });
@@ -1238,7 +1760,7 @@ function bindWatchlistEvents() {
       return;
     }
     if (normalized === null) {
-      showStatus("目标价必须是数字，保留两位小数");
+      showStatus(t("status.targetMustBeNumber"));
       target.value = state.draftTargets[target.dataset.symbol] || "";
       return;
     }
@@ -1319,7 +1841,7 @@ function bindSearchResultsClick() {
 
     if (mode === "pray") {
       if (state.pray.fruits.some((s) => s?.symbol === symbol)) {
-        showStatus("这只已经在供位上");
+        showStatus(t("status.alreadyOnAltar"));
         return;
       }
       const emptyIndex = state.pray.fruits.findIndex((item) => !item);
@@ -1335,12 +1857,12 @@ function bindSearchResultsClick() {
       searchResultsEl.innerHTML = "";
       searchCardEl.classList.remove("has-results");
       updateSearchClearButton();
-      showStatus("已上供");
+      showStatus(t("status.addedOffering"));
       return;
     }
 
     if (state.watchlist.some((s) => s.symbol === symbol)) {
-      showStatus("已在关注列表");
+      showStatus(t("status.alreadyWatching"));
       return;
     }
     state.watchlist.unshift({
@@ -1357,7 +1879,7 @@ function bindSearchResultsClick() {
     searchCardEl.classList.remove("has-results");
     updateSearchClearButton();
     refreshQuotes(true);
-    showStatus("已添加关注");
+    showStatus(t("status.addedWatch"));
   });
 }
 
@@ -1382,7 +1904,7 @@ function bindPraySearch() {
     const name = button.dataset.name || symbol;
     const secid = button.dataset.secid || null;
     if (state.pray.fruits.some((s) => s?.symbol === symbol)) {
-      showStatus("这只已经在供位上");
+      showStatus(t("status.alreadyOnAltar"));
       return;
     }
     if (state.pray.fruits.filter(Boolean).length >= 3 || state.activePraySlotIndex === null) {
@@ -1394,7 +1916,7 @@ function bindPraySearch() {
     await fetchPrayQuotes().catch(() => {});
     renderPrayMode();
     closePraySearch();
-    showStatus("已上供");
+    showStatus(t("status.addedOffering"));
   });
 }
 
@@ -1468,6 +1990,20 @@ async function ensureNotificationPermission() {
 function bindActions() {
   document.getElementById("refresh-btn").addEventListener("click", () => refreshQuotes(true));
   document.getElementById("info-btn").addEventListener("click", openInfoModal);
+  languageSelectEl.addEventListener("change", async (event) => {
+    state.languagePreference = normalizeLanguagePreference(event.target.value) || "system";
+    state.language =
+      state.languagePreference === "system" ? detectBrowserLanguage() : state.languagePreference;
+    await saveLanguage();
+    applyStaticTranslations();
+    renderMode();
+    renderIndexes(state.lastQuotes);
+    renderWatchlist(state.lastQuotes);
+    renderPrayMode();
+    renderPraySearchResults();
+    renderSearchResultsFromInput();
+    renderDetailModal();
+  });
   document.getElementById("review-btn").addEventListener("click", async () => {
     await chrome.tabs.create({ url: STORE_REVIEW_URL });
     closeInfoModal();
@@ -1508,6 +2044,19 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     renderPrayMode();
     renderSearchResultsFromInput();
   }
+  if (changes[LANGUAGE_STORAGE_KEY]) {
+    state.languagePreference =
+      normalizeLanguagePreference(changes[LANGUAGE_STORAGE_KEY].newValue) || "system";
+    state.language =
+      state.languagePreference === "system" ? detectBrowserLanguage() : state.languagePreference;
+    applyStaticTranslations();
+    renderMode();
+    renderIndexes(state.lastQuotes);
+    renderWatchlist(state.lastQuotes);
+    renderPrayMode();
+    renderPraySearchResults();
+    renderDetailModal();
+  }
 });
 
 async function init() {
@@ -1517,6 +2066,7 @@ async function init() {
     await savePrayState();
   }
   chrome.runtime.sendMessage({ type: "clearBadge" }).catch(() => {});
+  applyStaticTranslations();
   renderMode();
   renderIndexes(state.lastQuotes);
   renderWatchlist(state.lastQuotes);

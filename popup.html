@@ -11,10 +11,10 @@
       <header class="hero">
         <div class="hero-top">
           <div class="title-mode-switch" id="mode-switch">
-            <button class="title-mode-btn active" data-mode="watch">盯盘助手</button>
+            <button class="title-mode-btn active" data-mode="watch" id="watch-mode-btn">盯盘助手</button>
             <button class="title-mode-btn title-mode-pray" data-mode="pray">
-              <span>财神保佑</span>
-              <span class="title-mode-badge">旺</span>
+              <span id="pray-mode-label">财神保佑</span>
+              <span class="title-mode-badge" id="pray-mode-badge">旺</span>
             </button>
           </div>
           <div class="hero-actions">
@@ -35,7 +35,7 @@
         </div>
         <div class="hero-meta">
           <p class="sub" id="hero-sub">实时行情 · 价格提醒 · 浏览器通知</p>
-          <div class="timestamp">上次：<span id="last-updated">--</span></div>
+          <div class="timestamp"><span id="timestamp-label">上次：</span><span id="last-updated">--</span></div>
         </div>
       </header>
 
@@ -54,8 +54,8 @@
 
       <section class="card watch-card" id="watch-card">
         <div class="section-title-row">
-          <div class="section-title">我的关注</div>
-          <div class="count">已关注 <span id="stock-count">0</span> 只</div>
+          <div class="section-title" id="watch-section-title">我的关注</div>
+          <div class="count"><span id="watch-count-prefix">已关注</span> <span id="stock-count">0</span> <span id="watch-count-suffix">只</span></div>
         </div>
         <div id="watchlist"></div>
       </section>
@@ -86,7 +86,7 @@
             <div class="pray-search-overlay hidden" id="pray-search-overlay">
               <div class="pray-search-panel">
                 <div class="pray-search-head">
-                  <div class="pray-search-title">搜索股票上供</div>
+                  <div class="pray-search-title" id="pray-search-title">搜索股票上供</div>
                   <button class="pray-search-close" id="close-pray-search" title="关闭">×</button>
                 </div>
                 <div class="pray-search-box">
@@ -99,7 +99,7 @@
             <button id="incense-btn" class="incense-btn incense-btn-floating">上香</button>
             <img class="altar-burner-image" src="assets/incense-burner.png" alt="香炉" />
             <div class="incense-actions">
-              <div class="incense-meta">累计香火：<span id="incense-count">0</span> 次</div>
+              <div class="incense-meta"><span id="incense-count-label">累计香火：</span><span id="incense-count">0</span> <span id="incense-count-unit">次</span></div>
             </div>
           </div>
         </div>
@@ -112,10 +112,10 @@
       <div class="modal-backdrop" data-close-modal="true"></div>
       <div class="modal-panel">
         <button class="modal-close" id="close-qr-modal" title="关闭">×</button>
-        <div class="modal-title">供位已满</div>
-        <div class="modal-copy">当前最多只能上供三只股票。想继续加票，欢迎扫码联系作者交流。</div>
-        <img class="qr-image" src="assets/developer-qr.png" alt="作者微信二维码" />
-        <div class="modal-footnote">扫码备注来意，我会尽快回复。</div>
+        <div class="modal-title" id="qr-modal-title">供位已满</div>
+        <div class="modal-copy" id="qr-modal-copy">当前最多只能上供三只股票。想继续加票，欢迎扫码联系作者交流。</div>
+        <img class="qr-image" id="qr-modal-image" src="assets/developer-qr.png" alt="作者微信二维码" />
+        <div class="modal-footnote" id="qr-modal-footnote">扫码备注来意，我会尽快回复。</div>
       </div>
     </div>
 
@@ -123,29 +123,39 @@
       <div class="modal-backdrop" data-close-info-modal="true"></div>
       <div class="modal-panel info-modal-panel">
         <button class="modal-close" id="close-info-modal" title="关闭">×</button>
-        <div class="modal-title">联系开发者</div>
-        <div class="modal-copy">Zhang Xumeng </div>
-        <div class="modal-copy info-contact">18612033945（同微信）</div>
+        <div class="settings-card">
+          <div class="settings-title" id="settings-title">系统设置</div>
+          <div class="settings-row">
+            <label class="settings-label" for="language-select" id="language-label">语言</label>
+            <select id="language-select" class="settings-select">
+              <option value="system">跟随系统</option>
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-title" id="info-modal-title">联系开发者</div>
+        <div class="modal-copy info-contact" id="info-contact">Zhang Xumeng / TEL:18612033945（同微信）</div>
         <div class="info-grid">
           <div class="info-card">
-            <div class="info-card-title">微信联系</div>
-            <img class="qr-image" src="assets/developer-qr.png" alt="微信二维码" />
-            <div class="info-card-copy">加我反馈问题或提出建议</div>
+            <div class="info-card-title" id="developer-card-title">微信联系</div>
+            <img class="qr-image" id="developer-qr-image" src="assets/developer-qr.png" alt="微信二维码" />
+            <div class="info-card-copy" id="developer-card-copy">加我反馈问题或提出建议</div>
           </div>
           <div class="info-card">
-            <div class="info-card-title">支持一下</div>
-            <img class="qr-image" src="assets/alipay.png" alt="收款码" />
-            <div class="info-card-copy">欢迎金主请我喝杯咖啡</div>
+            <div class="info-card-title" id="support-card-title">支持一下</div>
+            <img class="qr-image" id="support-qr-image" src="assets/alipay.png" alt="收款码" />
+            <div class="info-card-copy" id="support-card-copy">欢迎金主请我喝杯咖啡</div>
           </div>
         </div>
         <div class="review-strip">
           <div class="review-copy">
-            <div class="review-title">喜欢这个插件？</div>
+            <div class="review-title" id="review-title">喜欢这个插件？</div>
             <div class="review-stars" aria-hidden="true">★★★★★</div>
           </div>
           <button id="review-btn" class="review-btn">去给个 5 星</button>
         </div>
-        <div class="modal-footnote">感谢支持，祝你自选常红、账户长虹。</div>
+        <div class="modal-footnote" id="info-modal-footnote">感谢支持，祝你自选常红、账户长虹。</div>
       </div>
     </div>
 

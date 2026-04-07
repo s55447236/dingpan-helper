@@ -1,8 +1,14 @@
-const INDEX_SYMBOLS = [
+const CN_INDEX_SYMBOLS = [
   { symbol: "000001.SS", secid: "1.000001" },
   { symbol: "399001.SZ", secid: "0.399001" },
   { symbol: "399006.SZ", secid: "0.399006" },
 ];
+const US_INDEX_SYMBOLS = [
+  { symbol: "NDX", secid: "100.NDX" },
+  { symbol: "SPX", secid: "100.SPX" },
+  { symbol: "DJIA", secid: "100.DJIA" },
+];
+const INDEX_SYMBOLS = [...CN_INDEX_SYMBOLS, ...US_INDEX_SYMBOLS];
 const POLL_MINUTES = 1;
 const EASTMONEY_UT = "b2884a393a59ad64002292a3e90d46a5";
 const DEFAULT_ICON =
@@ -113,7 +119,9 @@ async function fetchIndexQuotes() {
   const result = data?.data?.diff || [];
   const mapped = {};
   result.forEach((item) => {
-    const symbol = `${item.f12}${item.f12.startsWith("399") ? ".SZ" : ".SS"}`;
+    const symbol = /^\d+$/.test(String(item.f12))
+      ? `${item.f12}${item.f12.startsWith("399") ? ".SZ" : ".SS"}`
+      : item.f12;
     mapped[symbol] = {
       symbol,
       name: item.f14 || symbol,
