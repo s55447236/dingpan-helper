@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "股票神器Stocks（股票盯盘助手） - 摸鱼看盘小帮手",
   "description": "让股票盯盘更轻松。支持指数查看、自选股关注、目标价提醒和浏览器通知，适合上班时快速看盘并及时接收提醒。。",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "icons": {
     "16": "assets/icon-16.png",
     "48": "assets/icon-48.png",
