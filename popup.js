@@ -35,8 +35,8 @@ const TRANSLATIONS = {
       addOffering: "上供",
       burnIncense: "上香",
       addWatch: "关注",
-      removeWatch: "移除关注",
-      alertReminder: "目标价提醒",
+      removeWatch: "移除",
+      alertReminder: "目标价",
       setTarget: "设置目标价",
       deleteTarget: "删除目标价",
       confirm: "确定",
@@ -352,6 +352,10 @@ const state = {
   prayQuotes: {},
   draftTargets: {},
   activePopoverSymbol: null,
+  watchlistDrag: {
+    draggingSymbol: null,
+    lastMovedAt: 0,
+  },
   praySearchDraft: "",
   activePraySlotIndex: null,
   prayDisplayedCopy: null,
@@ -619,6 +623,11 @@ function formatPrice(val) {
   return Number(val).toFixed(2);
 }
 
+function formatQuotePrice(val) {
+  if (val === null || val === undefined || Number.isNaN(val)) return "--";
+  return Number(val).toFixed(3);
+}
+
 function formatSignedPrice(val) {
   if (val === null || val === undefined || Number.isNaN(val)) return "--";
   return `${val > 0 ? "+" : ""}${Number(val).toFixed(2)}`;
@@ -704,6 +713,32 @@ function updateStockCount() {
   stockCountEl.textContent = String(state.watchlist.length);
 }
 
+function clearWatchlistDropIndicators() {
+  watchlistEl
+    .querySelectorAll(".stock-card.drag-over-top, .stock-card.drag-over-bottom")
+    .forEach((item) => item.classList.remove("drag-over-top", "drag-over-bottom"));
+}
+
+function clearWatchlistDragClasses() {
+  watchlistEl
+    .querySelectorAll(".stock-card.dragging, .stock-card.drag-over-top, .stock-card.drag-over-bottom")
+    .forEach((item) => item.classList.remove("dragging", "drag-over-top", "drag-over-bottom"));
+}
+
+function moveWatchlistItem(fromSymbol, toSymbol, insertAfter = false) {
+  if (!fromSymbol || !toSymbol || fromSymbol === toSymbol) return false;
+  const fromIndex = state.watchlist.findIndex((item) => item.symbol === fromSymbol);
+  const toIndex = state.watchlist.findIndex((item) => item.symbol === toSymbol);
+  if (fromIndex === -1 || toIndex === -1) return false;
+
+  const [moved] = state.watchlist.splice(fromIndex, 1);
+  const adjustedTargetIndex = state.watchlist.findIndex((item) => item.symbol === toSymbol);
+  const nextIndex = insertAfter ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+  state.watchlist.splice(nextIndex, 0, moved);
+  state.watchlistDrag.lastMovedAt = Date.now();
+  return true;
+}
+
 function updateFruitCount() {
   const fruitCountEl = document.getElementById("fruit-count");
   if (fruitCountEl) {
@@ -731,6 +766,7 @@ function animateBlessingText(nextText) {
   void deityCopyEl.offsetWidth;
   deityCopyEl.classList.add("smoke-out");
   blessingAnimationTimer = setTimeout(() => {
+    state.prayDisplayedCopy = nextText;
     deityCopyEl.textContent = nextText;
     deityCopyEl.classList.remove("smoke-out");
     deityCopyEl.classList.add("smoke-in");
@@ -800,10 +836,13 @@ function renderWatchlist(quotes) {
     const card = document.createElement("div");
     card.className = "stock-card";
     card.dataset.symbol = stock.symbol;
+    card.draggable = true;
     card.innerHTML = `
       <div class="stock-header">
         <div class="stock-info">
-          <div class="stock-name">${stock.name || stock.symbol}</div>
+          <div class="stock-name-row">
+            <div class="stock-name">${stock.name || stock.symbol}</div>
+          </div>
           <div class="symbol-row">
             <div class="market-badge">${getMarketLabel(stock.symbol, stock.secid)}</div>
             <div class="stock-symbol">${stock.symbol}</div>
@@ -815,7 +854,7 @@ function renderWatchlist(quotes) {
           </div>
           <div class="quote-side">
             <div class="quote ${changeClass(q?.changePercent)}">
-              <span class="price">${formatPrice(q?.price)}</span>
+              <span class="price">${formatQuotePrice(q?.price)}</span>
               <span class="change-text ${changeClass(q?.changePercent)}">${formatPercent(
                 q?.changePercent
               )}</span>
@@ -824,6 +863,14 @@ function renderWatchlist(quotes) {
           <div class="quote-actions-overlay">
             <button class="bell-btn" data-symbol="${stock.symbol}" title="${t("actions.setTarget")}">${BELL_ICON}<span>${t("actions.alertReminder")}</span></button>
             <button class="remove-stock-inline" data-symbol="${stock.symbol}" title="${t("actions.removeWatch")}">${t("actions.removeWatch")}</button>
+            <span class="stock-drag-handle" aria-hidden="true">
+              <span class="stock-drag-dot"></span>
+              <span class="stock-drag-dot"></span>
+              <span class="stock-drag-dot"></span>
+              <span class="stock-drag-dot"></span>
+              <span class="stock-drag-dot"></span>
+              <span class="stock-drag-dot"></span>
+            </span>
           </div>
         </div>
       </div>
@@ -866,24 +913,6 @@ function parseTrendPoint(trend) {
   };
 }
 
-function getTradingOffset(timeText) {
-  const [hour, minute] = String(timeText)
-    .split(":")
-    .map((item) => Number(item));
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return 0;
-  const totalMinutes = hour * 60 + minute;
-  const morningStart = 9 * 60 + 30;
-  const morningEnd = 11 * 60 + 30;
-  const afternoonStart = 13 * 60;
-  const afternoonEnd = 15 * 60;
-
-  if (totalMinutes <= morningStart) return 0;
-  if (totalMinutes <= morningEnd) return totalMinutes - morningStart;
-  if (totalMinutes < afternoonStart) return 120;
-  if (totalMinutes <= afternoonEnd) return 120 + (totalMinutes - afternoonStart);
-  return 240;
-}
-
 function getMarketSession(market) {
   if (market === "US") {
     return {
@@ -904,11 +933,12 @@ function getMarketSession(market) {
       openMinutes: 9 * 60 + 30,
       closeMinutes: 16 * 60,
       crossMidnight: false,
-      totalMinutes: 390,
+      totalMinutes: 330,
+      breaks: [{ startMinutes: 12 * 60, endMinutes: 13 * 60 }],
       marks: [
         { label: "09:30", offset: 0, anchor: "start" },
         { label: "12:00", offset: 150, anchor: "middle" },
-        { label: "16:00", offset: 390, anchor: "end" },
+        { label: "16:00", offset: 330, anchor: "end" },
       ],
     };
   }
@@ -918,6 +948,7 @@ function getMarketSession(market) {
     closeMinutes: 15 * 60,
     crossMidnight: false,
     totalMinutes: 240,
+    breaks: [{ startMinutes: 11 * 60 + 30, endMinutes: 13 * 60 }],
     marks: [
       { label: "09:30", offset: 0, anchor: "start" },
       { label: "10:30", offset: 60, anchor: "middle" },
@@ -945,7 +976,21 @@ function getSessionOffset(timeText, session) {
 
   if (totalMinutes <= openMinutes) return 0;
   if (totalMinutes >= closeMinutes) return session.totalMinutes;
-  return totalMinutes - openMinutes;
+
+  let adjustedMinutes = totalMinutes;
+  (session.breaks || []).forEach((item) => {
+    const breakStart = session.crossMidnight && item.startMinutes < openMinutes
+      ? item.startMinutes + 24 * 60
+      : item.startMinutes;
+    const breakEnd = session.crossMidnight && item.endMinutes < openMinutes
+      ? item.endMinutes + 24 * 60
+      : item.endMinutes;
+
+    if (adjustedMinutes <= breakStart) return;
+    adjustedMinutes -= Math.min(adjustedMinutes, breakEnd) - breakStart;
+  });
+
+  return Math.max(0, adjustedMinutes - openMinutes);
 }
 
 function buildTrendSvg(points, preClose, market) {
@@ -1394,9 +1439,7 @@ function renderAltarFruitSlots() {
           <span>${
             price === null || price === undefined
               ? "--"
-              : Number.isInteger(price)
-                ? price.toFixed(0)
-                : price.toFixed(2)
+              : formatQuotePrice(price)
           }</span>
           <span>${formatPercent(changePercent)}</span>
         </div>
@@ -1663,6 +1706,8 @@ function findStock(symbol) {
 
 function bindWatchlistEvents() {
   watchlistEl.addEventListener("click", async (e) => {
+    if (Date.now() - state.watchlistDrag.lastMovedAt < 250) return;
+
     const target = e.target;
     const stockCard = target.closest(".stock-card");
     const removeStockBtn = target.closest("button.remove-stock-inline");
@@ -1758,6 +1803,62 @@ function bindWatchlistEvents() {
     );
     if (button) button.click();
   });
+
+  watchlistEl.addEventListener("dragstart", (e) => {
+    if (e.target.closest("button, input")) {
+      e.preventDefault();
+      return;
+    }
+
+    const stockCard = e.target.closest(".stock-card");
+    if (!stockCard) return;
+
+    state.watchlistDrag.draggingSymbol = stockCard.dataset.symbol;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", stockCard.dataset.symbol);
+    requestAnimationFrame(() => {
+      stockCard.classList.add("dragging");
+    });
+  });
+
+  watchlistEl.addEventListener("dragover", (e) => {
+    const stockCard = e.target.closest(".stock-card");
+    const draggingSymbol = state.watchlistDrag.draggingSymbol;
+    if (!stockCard || !draggingSymbol || stockCard.dataset.symbol === draggingSymbol) return;
+
+    e.preventDefault();
+    clearWatchlistDropIndicators();
+    const rect = stockCard.getBoundingClientRect();
+    const insertAfter = e.clientY > rect.top + rect.height / 2;
+    stockCard.classList.add(insertAfter ? "drag-over-bottom" : "drag-over-top");
+  });
+
+  watchlistEl.addEventListener("drop", async (e) => {
+    const stockCard = e.target.closest(".stock-card");
+    const draggingSymbol = state.watchlistDrag.draggingSymbol;
+    if (!stockCard || !draggingSymbol || stockCard.dataset.symbol === draggingSymbol) return;
+
+    e.preventDefault();
+    const rect = stockCard.getBoundingClientRect();
+    const insertAfter = e.clientY > rect.top + rect.height / 2;
+    const moved = moveWatchlistItem(draggingSymbol, stockCard.dataset.symbol, insertAfter);
+    clearWatchlistDragClasses();
+    state.watchlistDrag.draggingSymbol = null;
+    if (!moved) return;
+    await saveWatchlist();
+    renderWatchlist(state.lastQuotes);
+  });
+
+  watchlistEl.addEventListener("dragend", () => {
+    clearWatchlistDragClasses();
+    state.watchlistDrag.draggingSymbol = null;
+  });
+
+  watchlistEl.addEventListener("dragleave", (e) => {
+    const stockCard = e.target.closest(".stock-card");
+    if (!stockCard || stockCard.contains(e.relatedTarget)) return;
+    stockCard.classList.remove("drag-over-top", "drag-over-bottom");
+  });
 }
 
 function bindPrayEvents() {
@@ -1785,7 +1886,6 @@ function bindPrayEvents() {
     if (incenseBtn) {
       state.pray.incenseCount += 1;
       const blessing = getRandomBlessing();
-      state.prayDisplayedCopy = blessing;
       await savePrayState();
       incenseCountEl.textContent = String(state.pray.incenseCount);
       animateBlessingText(blessing);
