@@ -1419,8 +1419,65 @@ button:hover {
   font-weight: 600;
 }
 
+.detail-range-tabs {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  border-radius: 0;
+  overflow: visible;
+  background: #ffffff;
+}
+
+.detail-range-tab {
+  position: relative;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  color: #6b7280;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 30px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.detail-range-tab.active {
+  background: #ffffff;
+  color: #111827;
+}
+
+.detail-range-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 22px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  transform: translateX(-50%);
+}
+
+.detail-range-tab:hover,
+.detail-range-tab:focus-visible {
+  transform: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.detail-range-tab:not(.active):hover,
+.detail-range-tab:not(.active):focus-visible {
+  background: #ffffff;
+  color: #374151;
+}
+
 .detail-chart-card {
-  margin-top: 22px;
+  margin-top: 10px;
   padding: 10px 0 10px;
   border-radius: 0;
   background: transparent;
@@ -1440,6 +1497,21 @@ button:hover {
   stroke-linecap: round;
 }
 
+.detail-kline-wick {
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.detail-kline-body {
+  stroke-width: 0;
+}
+
+.detail-kline-body.selected {
+  stroke: #111827;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
 .detail-chart-base {
   stroke: #9ca3af;
   stroke-width: 1;
@@ -1451,6 +1523,13 @@ button:hover {
 .detail-chart-guide {
   stroke: #d7dde5;
   stroke-width: 1;
+}
+
+.detail-chart-day-guide {
+  stroke: #e5e7eb;
+  stroke-width: 0.8;
+  stroke-dasharray: 2 4;
+  opacity: 0.75;
 }
 
 .detail-chart-hover-guide {
@@ -1497,9 +1576,35 @@ button:hover {
   font-weight: 600;
 }
 
+.detail-chart-axis-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: start;
+}
+
+.detail-chart-axis-right {
+  text-anchor: end;
+}
+
+.detail-chart-axis-top {
+  fill: #dc2626;
+}
+
+.detail-chart-axis-mid {
+  fill: #64748b;
+}
+
+.detail-chart-axis-bottom {
+  fill: #16a34a;
+}
+
 .detail-chart-label {
   font-size: 10px;
   fill: #6b7280;
+}
+
+.detail-chart-label-left {
+  text-anchor: start;
 }
 
 .detail-chart-label-center {

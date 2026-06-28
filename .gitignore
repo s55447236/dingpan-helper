@@ -2,3 +2,4 @@
 .chrome-dev-profile/
 dist/
 *.log
+miniprogram/assets/*.mp4

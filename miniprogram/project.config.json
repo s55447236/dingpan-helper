@@ -1,0 +1,43 @@
+{
+  "description": "股票神器Stocks 小程序版",
+  "appid": "wx520c15159679996f",
+  "projectname": "stocks-miniapp",
+  "miniprogramRoot": "",
+  "compileType": "miniprogram",
+  "packOptions": {
+    "ignore": [
+      {
+        "value": "assets/caishen.mp4",
+        "type": "file"
+      },
+      {
+        "value": "assets/guanyu.mp4",
+        "type": "file"
+      },
+      {
+        "value": "assets/milefo.mp4",
+        "type": "file"
+      }
+    ],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "packNpmRelationList": []
+  },
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  },
+  "simulatorPluginLibVersion": {},
+  "libVersion": "3.16.1"
+}

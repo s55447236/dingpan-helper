@@ -1,0 +1,80 @@
+page {
+  background: #f5f6fa;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+}
+
+button {
+  box-sizing: border-box;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+  margin-bottom: 24rpx;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+.up {
+  color: #dc2626;
+}
+
+.down {
+  color: #16a34a;
+}
+
+.empty {
+  padding: 32rpx 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 26rpx;
+}
+
+.market-badge {
+  min-width: 48rpx;
+  height: 34rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: #eef2ff;
+  color: #475569;
+  font-size: 20rpx;
+  line-height: 34rpx;
+  text-align: center;
+}
+
+.primary-btn {
+  height: 64rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff7ed;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 64rpx;
+  padding: 0 28rpx;
+}
+
+.ghost-btn {
+  height: 60rpx;
+  border-radius: 999rpx;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 24rpx;
+  line-height: 60rpx;
+  padding: 0 24rpx;
+}
+
+.danger-btn {
+  background: #fef2f2;
+  color: #dc2626;
+}

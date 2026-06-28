@@ -22,6 +22,15 @@ const DEITIES = {
     video: "assets/milefo.mp4",
   },
 };
+const DETAIL_RANGES = [
+  { key: "1d", label: { zh: "分时", en: "1D" }, type: "trend", days: 1 },
+  { key: "day", label: { zh: "日K", en: "1D" }, type: "kline", klt: 101, limit: 80 },
+  { key: "week", label: { zh: "周K", en: "1W" }, type: "kline", klt: 102, limit: 80 },
+  { key: "month", label: { zh: "月K", en: "1M" }, type: "kline", klt: 103, limit: 80 },
+  { key: "5d", label: { zh: "五日", en: "5D" }, type: "trend", days: 5 },
+  { key: "year", label: { zh: "更多", en: "More" }, type: "kline", sourceKlt: 103, limit: 180 },
+];
+const DEFAULT_DETAIL_RANGE = "1d";
 const TRANSLATIONS = {
   zh: {
     appTitle: "盯盘助手",
@@ -370,6 +379,10 @@ const state = {
     loading: false,
     error: "",
     data: null,
+    rangeKey: DEFAULT_DETAIL_RANGE,
+    rangeCache: {},
+    rangeLoading: false,
+    rangeError: "",
     hoverIndex: null,
   },
   language: "zh",
@@ -647,6 +660,14 @@ function changeClass(val) {
   return "";
 }
 
+function getDetailRangeConfig(key) {
+  return DETAIL_RANGES.find((item) => item.key === key) || DETAIL_RANGES[0];
+}
+
+function getDetailRangeLabel(range) {
+  return range.label?.[state.language] || range.label?.zh || range.key;
+}
+
 function formatLargeNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "--";
   const abs = Math.abs(value);
@@ -905,12 +926,63 @@ function renderWatchlist(quotes) {
 
 function parseTrendPoint(trend) {
   const parts = String(trend).split(",");
-  const timeText = parts[0]?.split(" ")?.[1] || "--:--";
+  const [dateText = "", timeText = "--:--"] = String(parts[0] || "").split(" ");
   const price = normalizePrice(parts[1]);
   return {
+    date: dateText,
     time: timeText,
     price,
   };
+}
+
+function parseKlinePoint(kline) {
+  const parts = String(kline).split(",");
+  return {
+    date: parts[0] || "",
+    open: normalizePrice(parts[1]),
+    close: normalizePrice(parts[2]),
+    high: normalizePrice(parts[3]),
+    low: normalizePrice(parts[4]),
+    volume: Number(parts[5]),
+    amount: Number(parts[6]),
+    changePercent: normalizePrice(parts[8]),
+    change: normalizePrice(parts[9]),
+  };
+}
+
+function aggregateYearKlines(points) {
+  const groups = new Map();
+  points.forEach((point) => {
+    if (!point.date) return;
+    const year = point.date.slice(0, 4);
+    if (!groups.has(year)) {
+      groups.set(year, {
+        date: year,
+        open: point.open,
+        close: point.close,
+        high: point.high,
+        low: point.low,
+        volume: 0,
+        amount: 0,
+      });
+      return;
+    }
+    const item = groups.get(year);
+    item.close = point.close;
+    item.high = Math.max(item.high ?? point.high ?? 0, point.high ?? item.high ?? 0);
+    item.low = Math.min(item.low ?? point.low ?? 0, point.low ?? item.low ?? 0);
+    item.volume += Number.isFinite(point.volume) ? point.volume : 0;
+    item.amount += Number.isFinite(point.amount) ? point.amount : 0;
+  });
+
+  return Array.from(groups.values()).map((item) => ({
+    ...item,
+    change: item.open !== null && item.close !== null ? normalizePrice(item.close - item.open) : null,
+    changePercent:
+      item.open !== null && item.close !== null && item.open !== 0
+        ? normalizePrice(((item.close - item.open) / item.open) * 100)
+        : null,
+  }));
 }
 
 function getMarketSession(market) {
@@ -993,7 +1065,7 @@ function getSessionOffset(timeText, session) {
   return Math.max(0, adjustedMinutes - openMinutes);
 }
 
-function buildTrendSvg(points, preClose, market) {
+function buildTrendSvg(points, preClose, market, options = {}) {
   if (!points.length) {
     return `<div class="detail-chart-empty">${t("detail.empty")}</div>`;
   }
@@ -1002,6 +1074,7 @@ function buildTrendSvg(points, preClose, market) {
   const height = 128;
   const paddingX = 4;
   const paddingY = 10;
+  const isMultiDay = options.mode === "multi";
   const validPrices = points.map((item) => item.price).filter((item) => item !== null);
   if (!validPrices.length) {
     return `<div class="detail-chart-empty">${t("detail.empty")}</div>`;
@@ -1014,14 +1087,26 @@ function buildTrendSvg(points, preClose, market) {
   const plotHeight = height - paddingY * 2;
   const session = getMarketSession(market);
   const totalTradingMinutes = session.totalMinutes;
-  const getX = (timeText) => paddingX + (getSessionOffset(timeText, session) / totalTradingMinutes) * plotWidth;
+  const multiDayLayout = isMultiDay
+    ? getMultiDayLayout(points, session, paddingX, plotWidth, options.dateMarks)
+    : null;
+  const getX = (point, index) => {
+    if (multiDayLayout) {
+      const dayIndex = multiDayLayout.dateIndexMap.get(point.date) ?? 0;
+      const offsetRatio = point.daily
+        ? 0.5
+        : Math.min(Math.max(getSessionOffset(point.time, session) / totalTradingMinutes, 0), 1);
+      return paddingX + dayIndex * multiDayLayout.dayWidth + offsetRatio * multiDayLayout.dayWidth;
+    }
+    return paddingX + (getSessionOffset(point.time, session) / totalTradingMinutes) * plotWidth;
+  };
   const getY = (price) =>
     paddingY + ((max - price) / range) * plotHeight;
 
   const line = points
-    .map((point) => `${getX(point.time)},${getY(point.price ?? min)}`)
+    .map((point, index) => `${getX(point, index)},${getY(point.price ?? min)}`)
     .join(" ");
-  const lastPointX = getX(points[points.length - 1]?.time || session.marks[0].label);
+  const lastPointX = getX(points[points.length - 1] || { time: session.marks[0].label }, points.length - 1);
   const area = `${paddingX},${height - paddingY} ${line} ${lastPointX},${height - paddingY}`;
   const baseLineY = preClose !== null && preClose !== undefined ? getY(preClose) : height / 2;
   const lastPrice = points[points.length - 1]?.price ?? validPrices[validPrices.length - 1];
@@ -1030,24 +1115,40 @@ function buildTrendSvg(points, preClose, market) {
   const fillStart = isUp ? "rgba(220,38,38,0.22)" : "rgba(22,163,74,0.20)";
   const fillEnd = isUp ? "rgba(220,38,38,0.03)" : "rgba(22,163,74,0.03)";
 
-  const timeMarks = session.marks;
+  const timeMarks = multiDayLayout
+    ? multiDayLayout.marks
+    : session.marks.map((item) => ({
+        label: item.label,
+        x: paddingX + (item.offset / totalTradingMinutes) * plotWidth,
+        anchor: item.anchor,
+      }));
+  const dayGuides = multiDayLayout?.guides || [];
 
   const hoverIndex = state.detail.hoverIndex;
   const hoverPoint =
     hoverIndex !== null && hoverIndex >= 0 && hoverIndex < points.length ? points[hoverIndex] : null;
-  const hoverX = hoverPoint ? getX(hoverPoint.time) : null;
+  const hoverX = hoverPoint ? getX(hoverPoint, hoverIndex) : null;
   const hoverY = hoverPoint ? getY(hoverPoint.price ?? min) : null;
   const highestPoint = points.reduce((best, point) => ((point.price ?? min) > (best.price ?? min) ? point : best), points[0]);
   const lowestPoint = points.reduce((best, point) => ((point.price ?? max) < (best.price ?? max) ? point : best), points[0]);
-  const highestX = getX(highestPoint.time);
+  const highestIndex = points.indexOf(highestPoint);
+  const lowestIndex = points.indexOf(lowestPoint);
+  const highestX = getX(highestPoint, highestIndex);
   const highestY = getY(highestPoint.price ?? max);
-  const lowestX = getX(lowestPoint.time);
+  const lowestX = getX(lowestPoint, lowestIndex);
   const lowestY = getY(lowestPoint.price ?? min);
   const highestLabelX = Math.min(Math.max(highestX, paddingX + 18), width - paddingX - 18);
   const lowestLabelX = Math.min(Math.max(lowestX, paddingX + 18), width - paddingX - 18);
   const highestLabelY = Math.max(paddingY + 10, highestY - 8);
   const lowestLabelY = Math.min(height - paddingY - 2, lowestY + 14);
-  const tooltipText = hoverPoint ? `${hoverPoint.time} ${formatPrice(hoverPoint.price)}` : "";
+  const axisBasePrice = preClose ?? validPrices[0];
+  const topPercent = axisBasePrice ? ((max - axisBasePrice) / axisBasePrice) * 100 : null;
+  const bottomPercent = axisBasePrice ? ((min - axisBasePrice) / axisBasePrice) * 100 : null;
+  const tooltipText = hoverPoint
+    ? `${isMultiDay && hoverPoint.date ? `${hoverPoint.date.slice(5)} ` : ""}${
+        hoverPoint.daily ? "" : `${hoverPoint.time} `
+      }${formatPrice(hoverPoint.price)}`
+    : "";
   const tooltipWidth = Math.max(64, tooltipText.length * 6.2 + 14);
   const tooltipX = hoverPoint
     ? Math.min(Math.max(hoverX - tooltipWidth / 2, paddingX), width - paddingX - tooltipWidth)
@@ -1063,12 +1164,26 @@ function buildTrendSvg(points, preClose, market) {
         </linearGradient>
       </defs>
       <line x1="${paddingX}" x2="${width - paddingX}" y1="${baseLineY}" y2="${baseLineY}" class="detail-chart-base"></line>
+      ${dayGuides
+        .map(
+          (x) =>
+            `<line x1="${x}" x2="${x}" y1="${paddingY}" y2="${height - paddingY}" class="detail-chart-day-guide"></line>`
+        )
+        .join("")}
       <polygon points="${area}" fill="url(#detail-chart-fill)"></polygon>
       <polyline points="${line}" class="detail-chart-line" style="stroke:${strokeColor}"></polyline>
-      <circle cx="${highestX}" cy="${highestY}" r="3.2" class="detail-chart-extreme-dot" style="stroke:${strokeColor}"></circle>
-      <text x="${highestLabelX}" y="${highestLabelY}" class="detail-chart-extreme-label">${formatPrice(highestPoint.price)}</text>
-      <circle cx="${lowestX}" cy="${lowestY}" r="3.2" class="detail-chart-extreme-dot" style="stroke:${strokeColor}"></circle>
-      <text x="${lowestLabelX}" y="${lowestLabelY}" class="detail-chart-extreme-label">${formatPrice(lowestPoint.price)}</text>
+      ${
+        isMultiDay
+          ? `<text x="${paddingX}" y="${paddingY + 8}" class="detail-chart-axis-label detail-chart-axis-top">${formatPrice(max)}</text>
+             <text x="${paddingX}" y="${baseLineY + 4}" class="detail-chart-axis-label detail-chart-axis-mid">${formatPrice(axisBasePrice)}</text>
+             <text x="${paddingX}" y="${height - paddingY - 4}" class="detail-chart-axis-label detail-chart-axis-bottom">${formatPrice(min)}</text>
+             <text x="${width - paddingX}" y="${paddingY + 8}" class="detail-chart-axis-label detail-chart-axis-top detail-chart-axis-right">${formatPercent(topPercent)}</text>
+             <text x="${width - paddingX}" y="${height - paddingY - 4}" class="detail-chart-axis-label detail-chart-axis-bottom detail-chart-axis-right">${formatPercent(bottomPercent)}</text>`
+          : `<circle cx="${highestX}" cy="${highestY}" r="3.2" class="detail-chart-extreme-dot" style="stroke:${strokeColor}"></circle>
+             <text x="${highestLabelX}" y="${highestLabelY}" class="detail-chart-extreme-label">${formatPrice(highestPoint.price)}</text>
+             <circle cx="${lowestX}" cy="${lowestY}" r="3.2" class="detail-chart-extreme-dot" style="stroke:${strokeColor}"></circle>
+             <text x="${lowestLabelX}" y="${lowestLabelY}" class="detail-chart-extreme-label">${formatPrice(lowestPoint.price)}</text>`
+      }
       ${
         hoverPoint
           ? `<line x1="${hoverX}" x2="${hoverX}" y1="${paddingY}" y2="${height - paddingY}" class="detail-chart-hover-guide"></line>
@@ -1080,18 +1195,168 @@ function buildTrendSvg(points, preClose, market) {
       <text x="${width - paddingX}" y="${baseLineY - 4}" class="detail-chart-zero">0%</text>
       ${timeMarks
         .map((item) => {
-          const x = paddingX + (item.offset / totalTradingMinutes) * plotWidth;
           const classes =
             item.anchor === "middle"
               ? "detail-chart-label detail-chart-label-center"
               : item.anchor === "end"
                 ? "detail-chart-label detail-chart-label-right"
                 : "detail-chart-label";
-          return `<text x="${x}" y="${height - 2}" class="${classes}">${item.label}</text>`;
+          return `<text x="${item.x}" y="${height - 2}" class="${classes}">${item.label}</text>`;
         })
         .join("")}
     </svg>
   `;
+}
+
+function getMultiDayLayout(points, session, paddingX, plotWidth, dateMarks = []) {
+  const dates = [];
+  points.forEach((point, index) => {
+    const fallbackDate = `day-${Math.floor(index / Math.max(Math.ceil(points.length / 5), 1))}`;
+    const date = point.date || fallbackDate;
+    if (!dates.includes(date)) dates.push(date);
+  });
+  const visibleDates = (dateMarks.length ? dateMarks : dates).slice(-5);
+  const dateIndexMap = new Map(visibleDates.map((date, index) => [date, index]));
+  dates.forEach((date) => {
+    if (dateIndexMap.has(date) || !dateMarks.length) return;
+    const parsedDate = new Date(`${date}T00:00:00`);
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+    visibleDates.forEach((markDate, index) => {
+      const parsedMarkDate = new Date(`${markDate}T00:00:00`);
+      const distance = Math.abs(parsedDate.getTime() - parsedMarkDate.getTime());
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    dateIndexMap.set(date, nearestIndex);
+  });
+  const dayWidth = plotWidth / Math.max(visibleDates.length, 1);
+  const marks = visibleDates.map((date, index) => ({
+    label: formatTrendDateLabel(date),
+    x: paddingX + dayWidth * index + dayWidth / 2,
+    anchor: "middle",
+  }));
+  const guides = visibleDates.slice(1).map((_, index) => paddingX + dayWidth * (index + 1));
+  return { dateIndexMap, dayWidth, marks, guides };
+}
+
+function formatTrendDateLabel(date) {
+  if (!date || date.startsWith("day-")) return "";
+  const normalized = String(date).replace(/\//g, "-");
+  return normalized.length >= 10 ? normalized.slice(5) : normalized;
+}
+
+function getVisibleKlinePoints(points) {
+  return points.slice(-60).filter((point) =>
+    [point.open, point.close, point.high, point.low].every((value) => value !== null && value !== undefined)
+  );
+}
+
+function buildKlineSvg(points) {
+  const visible = getVisibleKlinePoints(points);
+  if (!visible.length) {
+    return `<div class="detail-chart-empty">${t("detail.empty")}</div>`;
+  }
+
+  const width = 286;
+  const height = 128;
+  const paddingX = 4;
+  const paddingY = 10;
+  const lows = visible.map((item) => item.low);
+  const highs = visible.map((item) => item.high);
+  const min = Math.min(...lows);
+  const max = Math.max(...highs);
+  const range = Math.max(max - min, 0.01);
+  const plotWidth = width - paddingX * 2;
+  const plotHeight = height - paddingY * 2;
+  const step = plotWidth / Math.max(visible.length, 1);
+  const candleWidth = Math.min(Math.max(step * 0.58, 2), 7);
+  const getX = (index) => paddingX + step * index + step / 2;
+  const getY = (price) => paddingY + ((max - price) / range) * plotHeight;
+  const marks = buildKlineMarks(visible, paddingX, plotWidth);
+  const hoverIndex =
+    state.detail.hoverIndex !== null && state.detail.hoverIndex >= 0 && state.detail.hoverIndex < visible.length
+      ? state.detail.hoverIndex
+      : null;
+  const hoverPoint = hoverIndex !== null ? visible[hoverIndex] : null;
+  const hoverX = hoverIndex !== null ? getX(hoverIndex) : null;
+  const tooltipText = hoverPoint ? `${formatKlineDateLabel(hoverPoint.date)} ${formatPrice(hoverPoint.close)}` : "";
+  const tooltipWidth = Math.max(70, tooltipText.length * 6.2 + 14);
+  const tooltipX =
+    hoverX !== null ? Math.min(Math.max(hoverX - tooltipWidth / 2, paddingX), width - paddingX - tooltipWidth) : 0;
+  const tooltipY = hoverPoint ? Math.max(paddingY, getY(hoverPoint.high) - 22) : 0;
+
+  return `
+    <svg class="detail-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="${paddingX}" x2="${width - paddingX}" y1="${getY(max)}" y2="${getY(max)}" class="detail-chart-guide"></line>
+      <line x1="${paddingX}" x2="${width - paddingX}" y1="${getY(min)}" y2="${getY(min)}" class="detail-chart-base"></line>
+      ${
+        hoverX !== null
+          ? `<line x1="${hoverX}" x2="${hoverX}" y1="${paddingY}" y2="${height - paddingY}" class="detail-chart-hover-guide"></line>`
+          : ""
+      }
+      ${visible
+        .map((point, index) => {
+          const x = getX(index);
+          const openY = getY(point.open);
+          const closeY = getY(point.close);
+          const highY = getY(point.high);
+          const lowY = getY(point.low);
+          const top = Math.min(openY, closeY);
+          const bodyHeight = Math.max(Math.abs(openY - closeY), 1);
+          const isUp = point.close >= point.open;
+          const color = isUp ? "#dc2626" : "#16a34a";
+          const selected = index === hoverIndex;
+          return `<line x1="${x}" x2="${x}" y1="${highY}" y2="${lowY}" class="detail-kline-wick" style="stroke:${color}"></line>
+            <rect x="${x - candleWidth / 2}" y="${top}" width="${candleWidth}" height="${bodyHeight}" rx="0.6" class="detail-kline-body ${
+              selected ? "selected" : ""
+            }" style="fill:${color}"></rect>`;
+        })
+        .join("")}
+      ${
+        hoverPoint
+          ? `<rect x="${tooltipX}" y="${tooltipY}" width="${tooltipWidth}" height="16" rx="8" class="detail-chart-tooltip-bg"></rect>
+             <text x="${tooltipX + tooltipWidth / 2}" y="${tooltipY + 11}" class="detail-chart-tooltip">${tooltipText}</text>`
+          : ""
+      }
+      <text x="${paddingX}" y="${paddingY + 8}" class="detail-chart-extreme-label detail-chart-label-left">${formatPrice(max)}</text>
+      <text x="${paddingX}" y="${height - paddingY - 4}" class="detail-chart-extreme-label detail-chart-label-left">${formatPrice(min)}</text>
+      ${marks
+        .map((item) => {
+          const classes =
+            item.anchor === "middle"
+              ? "detail-chart-label detail-chart-label-center"
+              : item.anchor === "end"
+                ? "detail-chart-label detail-chart-label-right"
+                : "detail-chart-label";
+          return `<text x="${item.x}" y="${height - 2}" class="${classes}">${item.label}</text>`;
+        })
+        .join("")}
+    </svg>
+  `;
+}
+
+function buildKlineMarks(points, paddingX, plotWidth) {
+  const indexes = [0, Math.floor((points.length - 1) / 2), points.length - 1];
+  return indexes
+    .filter((index, position, array) => index >= 0 && array.indexOf(index) === position)
+    .map((index, position, array) => {
+      const point = points[index];
+      const denominator = Math.max(points.length - 1, 1);
+      return {
+        label: formatKlineDateLabel(point.date),
+        x: paddingX + (index / denominator) * plotWidth,
+        anchor: position === 0 ? "start" : position === array.length - 1 ? "end" : "middle",
+      };
+    });
+}
+
+function formatKlineDateLabel(date) {
+  if (!date) return "";
+  if (/^\d{4}$/.test(date)) return date;
+  return date.length >= 10 ? date.slice(5) : date;
 }
 
 function buildMiniTrendSvg(detail, market) {
@@ -1156,6 +1421,161 @@ async function fetchMiniTrend(stock) {
   };
 }
 
+async function fetchTrendRange(stock, range) {
+  const secid = stock.secid || inferSecid(stock.symbol);
+  if (!secid) throw new Error(t("detail.unsupported"));
+  const trendUrl = `https://push2.eastmoney.com/api/qt/stock/trends2/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f17&fields2=f51,f52,f53,f54,f55,f56,f57,f58&ut=b2884a393a59ad64002292a3e90d46a5&secid=${encodeURIComponent(
+    secid
+  )}&ndays=${range.days}&iscr=0&iscca=0`;
+  const historyTrendUrl = `https://push2his.eastmoney.com/api/qt/stock/trends2/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f17&fields2=f51,f52,f53,f54,f55,f56,f57,f58&ut=b2884a393a59ad64002292a3e90d46a5&secid=${encodeURIComponent(
+    secid
+  )}&ndays=${range.days}&iscr=0&iscca=0`;
+  const trendRequest =
+    range.days === 5
+      ? fetchJson(historyTrendUrl).catch(() => fetchJson(trendUrl))
+      : fetchJson(trendUrl);
+  const requests = [trendRequest];
+  if (range.days === 5) {
+    requests.push(fetchRecentMinuteTrend(secid, 5).catch(() => []));
+    requests.push(fetchRecentDailyTrend(secid, 5).catch(() => []));
+  }
+  const [trendResult, minuteResult, dailyResult] = await Promise.allSettled(requests);
+  const trendRes = trendResult.status === "fulfilled" ? trendResult.value : null;
+  const minuteTrend = minuteResult?.status === "fulfilled" ? minuteResult.value : [];
+  const dailyTrend = dailyResult?.status === "fulfilled" ? dailyResult.value : [];
+  const trendData = trendRes?.data || {};
+  const trends = Array.isArray(trendData.trends)
+    ? trendData.trends
+        .map(parseTrendPoint)
+        .filter((item) => item.price !== null && item.price > 0)
+    : [];
+  const trendDates = new Set(trends.map((item) => item.date).filter(Boolean));
+  const fineTrendDates = getTrendDates(minuteTrend);
+  const shouldUseFineFallback = range.days === 5 && minuteTrend.length >= 30 && fineTrendDates.length >= 2 && trendDates.size < 2;
+  const shouldUseDailyFallback =
+    range.days === 5 && !shouldUseFineFallback && dailyTrend.length >= 2 && trendDates.size < 2;
+  const normalizedTrends = shouldUseFineFallback ? minuteTrend : shouldUseDailyFallback ? dailyTrend : trends;
+  if (!normalizedTrends.length) {
+    throw new Error(t("detail.loadFailed"));
+  }
+  const normalizedDates = getTrendDates(normalizedTrends);
+  const dateMarks =
+    range.days === 5
+      ? normalizedDates.length >= 2
+        ? normalizedDates
+        : dailyTrend.map((item) => item.date).filter(Boolean)
+      : [];
+  return {
+    type: "trend",
+    preClose: normalizePrice(
+      shouldUseFineFallback
+        ? dailyTrend[0]?.price ?? minuteTrend[0]?.price
+        : shouldUseDailyFallback
+          ? dailyTrend[0]?.price
+        : trendData.preClose ?? state.detail.data?.preClose
+    ),
+    trends: normalizedTrends,
+    dateMarks,
+  };
+}
+
+async function fetchRecentMinuteTrend(secid, count) {
+  const url = `http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${encodeURIComponent(
+    secid
+  )}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=10&fqt=1&beg=${getKlineBeginDate(
+    "day"
+  )}&end=20500101&lmt=500&ut=b2884a393a59ad64002292a3e90d46a5`;
+  const data = await fetchJson(url);
+  const klines = Array.isArray(data?.data?.klines) ? data.data.klines.map(parseKlinePoint) : [];
+  const dates = getKlineDates(klines).slice(-count);
+  const allowedDates = new Set(dates);
+  return klines
+    .filter((item) => allowedDates.has(getKlineDatePart(item.date)) && item.close !== null && item.close > 0)
+    .map((item) => ({
+      date: getKlineDatePart(item.date),
+      time: getKlineTimePart(item.date),
+      price: item.close,
+    }));
+}
+
+async function fetchRecentDailyTrend(secid, count) {
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${encodeURIComponent(
+    secid
+  )}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&beg=${getKlineBeginDate(
+    "day"
+  )}&end=20500101&ut=b2884a393a59ad64002292a3e90d46a5`;
+  const data = await fetchJson(url);
+  const klines = Array.isArray(data?.data?.klines) ? data.data.klines.map(parseKlinePoint) : [];
+  return klines
+    .slice(-count)
+    .filter((item) => item.date && item.close !== null && item.close > 0)
+    .map((item) => ({
+      date: item.date,
+      time: "15:00",
+      price: item.close,
+      daily: true,
+    }));
+}
+
+function getTrendDates(points) {
+  const dates = [];
+  points.forEach((item) => {
+    if (item.date && !dates.includes(item.date)) dates.push(item.date);
+  });
+  return dates;
+}
+
+function getKlineDates(points) {
+  const dates = [];
+  points.forEach((item) => {
+    const date = getKlineDatePart(item.date);
+    if (date && !dates.includes(date)) dates.push(date);
+  });
+  return dates;
+}
+
+function getKlineDatePart(value) {
+  return String(value || "").split(" ")[0];
+}
+
+function getKlineTimePart(value) {
+  return String(value || "").split(" ")[1] || "15:00";
+}
+
+async function fetchKlineRange(stock, range) {
+  const secid = stock.secid || inferSecid(stock.symbol);
+  if (!secid) throw new Error(t("detail.unsupported"));
+  const klt = range.sourceKlt || range.klt;
+  const limit = range.limit || 80;
+  const begin = getKlineBeginDate(range.key);
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${encodeURIComponent(
+    secid
+  )}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=${klt}&fqt=1&beg=${begin}&end=20500101&lmt=${limit}&ut=b2884a393a59ad64002292a3e90d46a5`;
+  const data = await fetchJson(url);
+  const klines = Array.isArray(data?.data?.klines) ? data.data.klines.map(parseKlinePoint) : [];
+  return {
+    type: "kline",
+    klines: range.key === "year" ? aggregateYearKlines(klines) : klines,
+  };
+}
+
+function getKlineBeginDate(rangeKey) {
+  const currentYear = new Date().getFullYear();
+  const yearsBack = {
+    day: 1,
+    week: 5,
+    month: 12,
+    year: 24,
+  }[rangeKey] ?? 2;
+  return `${currentYear - yearsBack}0101`;
+}
+
+async function fetchDetailRange(stock, rangeKey) {
+  const range = getDetailRangeConfig(rangeKey);
+  if (range.type === "trend") return fetchTrendRange(stock, range);
+  return fetchKlineRange(stock, range);
+}
+
 function ensureMiniTrends() {
   state.watchlist.forEach((stock) => {
     if (state.miniTrends[stock.symbol] || state.miniTrendPending[stock.symbol]) return;
@@ -1202,19 +1622,55 @@ function renderDetailModal() {
 
   const detail = state.detail.data;
   if (!detail) return;
+  const rangeKey = state.detail.rangeKey || DEFAULT_DETAIL_RANGE;
+  const range = getDetailRangeConfig(rangeKey);
+  const rangeData = state.detail.rangeCache[rangeKey] || {
+    type: "trend",
+    preClose: detail.preClose,
+    trends: detail.trends || [],
+  };
+  const trendPoints = rangeData.type === "trend" ? rangeData.trends || [] : [];
+  const klinePoints = rangeData.type === "kline" ? getVisibleKlinePoints(rangeData.klines || []) : [];
   const hoverPoint =
-    state.detail.hoverIndex !== null && detail.trends[state.detail.hoverIndex]
-      ? detail.trends[state.detail.hoverIndex]
-      : null;
-  const activePrice = hoverPoint?.price ?? detail.price;
+    rangeData.type === "kline" && state.detail.hoverIndex !== null && klinePoints[state.detail.hoverIndex]
+      ? klinePoints[state.detail.hoverIndex]
+      : state.detail.hoverIndex !== null && trendPoints[state.detail.hoverIndex]
+        ? trendPoints[state.detail.hoverIndex]
+        : null;
+  const activePrice =
+    rangeData.type === "kline" && hoverPoint
+      ? hoverPoint.close
+      : hoverPoint?.price ?? detail.price;
   const activeChange =
-    hoverPoint?.price !== null && hoverPoint?.price !== undefined && detail.preClose !== null
-      ? normalizePrice(hoverPoint.price - detail.preClose)
-      : detail.change;
+    rangeData.type === "kline" && hoverPoint
+      ? hoverPoint.change
+      : hoverPoint?.price !== null && hoverPoint?.price !== undefined && rangeData.preClose !== null
+        ? normalizePrice(hoverPoint.price - rangeData.preClose)
+        : detail.change;
   const activeChangePercent =
-    hoverPoint?.price !== null && hoverPoint?.price !== undefined && detail.preClose !== null
-      ? normalizePrice(((hoverPoint.price - detail.preClose) / detail.preClose) * 100)
-      : detail.changePercent;
+    rangeData.type === "kline" && hoverPoint
+      ? hoverPoint.changePercent
+      : hoverPoint?.price !== null && hoverPoint?.price !== undefined && rangeData.preClose !== null
+        ? normalizePrice(((hoverPoint.price - rangeData.preClose) / rangeData.preClose) * 100)
+        : detail.changePercent;
+  const activeTime =
+    rangeData.type === "kline" && hoverPoint
+      ? formatKlineDateLabel(hoverPoint.date)
+      : hoverPoint
+        ? hoverPoint.daily && hoverPoint.date
+          ? formatTrendDateLabel(hoverPoint.date)
+          : hoverPoint.time
+        : t("detail.latest");
+  const chartHtml = state.detail.rangeLoading
+    ? `<div class="detail-chart-empty">${t("detail.loading")}</div>`
+    : state.detail.rangeError
+      ? `<div class="detail-chart-empty">${state.detail.rangeError}</div>`
+      : rangeData.type === "kline"
+        ? buildKlineSvg(rangeData.klines || [])
+        : buildTrendSvg(trendPoints, rangeData.preClose, getMarketLabel(detail.symbol, detail.secid), {
+            mode: rangeKey === "5d" ? "multi" : "session",
+            dateMarks: rangeData.dateMarks || [],
+          });
 
   detailBodyEl.innerHTML = `
     <div class="detail-head">
@@ -1229,10 +1685,19 @@ function renderDetailModal() {
         <span>${formatSignedPrice(activeChange)}</span>
         <span>(${formatPercent(activeChangePercent)})</span>
       </div>
-      <div class="detail-time">${hoverPoint ? hoverPoint.time : t("detail.latest")}</div>
+      <div class="detail-time">${activeTime}</div>
+    </div>
+    <div class="detail-range-tabs" role="tablist" aria-label="行情周期">
+      ${DETAIL_RANGES.map(
+        (item) => `
+          <button class="detail-range-tab ${item.key === range.key ? "active" : ""}" data-detail-range="${item.key}" type="button" role="tab" aria-selected="${item.key === range.key}">
+            ${getDetailRangeLabel(item)}
+          </button>
+        `
+      ).join("")}
     </div>
     <div class="detail-chart-card">
-      ${buildTrendSvg(detail.trends, detail.preClose, getMarketLabel(detail.symbol, detail.secid))}
+      ${chartHtml}
     </div>
     <div class="detail-stats-grid">
       <div class="detail-stat"><span class="label">${t("detail.preClose")}</span><span class="value">${formatPrice(detail.preClose)}</span></div>
@@ -1246,29 +1711,74 @@ function renderDetailModal() {
     </div>
   `;
 
-  bindDetailChartHover(detail);
+  if (!state.detail.rangeLoading && !state.detail.rangeError && rangeData.type === "trend") {
+    bindDetailChartHover(
+      detail,
+      trendPoints,
+      rangeKey === "5d" ? "multi" : "session",
+      rangeData.dateMarks || []
+    );
+  } else if (!state.detail.rangeLoading && !state.detail.rangeError && rangeData.type === "kline") {
+    bindKlineChartHover(rangeData.klines || []);
+  }
 }
 
-function bindDetailChartHover(detail) {
+function bindDetailChartHover(detail, points, mode = "session", dateMarks = []) {
   const svg = detailBodyEl.querySelector(".detail-chart-svg");
-  if (!svg || !detail.trends.length) return;
+  if (!svg || !points.length) return;
   const session = getMarketSession(getMarketLabel(detail.symbol, detail.secid));
+  const multiDayLayout = mode === "multi" ? getMultiDayLayout(points, session, 0, 1, dateMarks) : null;
 
   const updateHover = (clientX) => {
     const rect = svg.getBoundingClientRect();
     const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
     const ratio = rect.width === 0 ? 0 : x / rect.width;
-    const tradingOffset = ratio * session.totalMinutes;
     let nearestIndex = 0;
     let nearestDistance = Infinity;
 
-    detail.trends.forEach((point, index) => {
-      const distance = Math.abs(getSessionOffset(point.time, session) - tradingOffset);
+    points.forEach((point, index) => {
+      const pointOffset = multiDayLayout
+        ? (multiDayLayout.dateIndexMap.get(point.date) ?? 0) * multiDayLayout.dayWidth +
+          (point.daily
+            ? 0.5
+            : Math.min(Math.max(getSessionOffset(point.time, session) / session.totalMinutes, 0), 1)) *
+            multiDayLayout.dayWidth
+        : getSessionOffset(point.time, session) / session.totalMinutes;
+      const distance = Math.abs(pointOffset - ratio);
       if (distance < nearestDistance) {
         nearestDistance = distance;
         nearestIndex = index;
       }
     });
+
+    if (state.detail.hoverIndex !== nearestIndex) {
+      state.detail.hoverIndex = nearestIndex;
+      renderDetailModal();
+    }
+  };
+
+  svg.addEventListener("mousemove", (event) => updateHover(event.clientX));
+  svg.addEventListener("mouseleave", () => {
+    state.detail.hoverIndex = null;
+    renderDetailModal();
+  });
+}
+
+function bindKlineChartHover(points) {
+  const svg = detailBodyEl.querySelector(".detail-chart-svg");
+  const visible = getVisibleKlinePoints(points);
+  if (!svg || !visible.length) return;
+
+  const width = 286;
+  const paddingX = 4;
+  const plotWidth = width - paddingX * 2;
+  const step = plotWidth / Math.max(visible.length, 1);
+
+  const updateHover = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    const viewX = rect.width === 0 ? 0 : ((clientX - rect.left) / rect.width) * width;
+    const chartX = Math.min(Math.max(viewX - paddingX, 0), plotWidth);
+    const nearestIndex = Math.min(visible.length - 1, Math.max(0, Math.floor(chartX / step)));
 
     if (state.detail.hoverIndex !== nearestIndex) {
       state.detail.hoverIndex = nearestIndex;
@@ -1329,6 +1839,10 @@ async function openStockDetail(symbol) {
     loading: true,
     error: "",
     data: null,
+    rangeKey: DEFAULT_DETAIL_RANGE,
+    rangeCache: {},
+    rangeLoading: false,
+    rangeError: "",
     hoverIndex: null,
   };
   renderDetailModal();
@@ -1340,6 +1854,16 @@ async function openStockDetail(symbol) {
       loading: false,
       error: "",
       data: detail,
+      rangeKey: DEFAULT_DETAIL_RANGE,
+      rangeCache: {
+        [DEFAULT_DETAIL_RANGE]: {
+          type: "trend",
+          preClose: detail.preClose,
+          trends: detail.trends,
+        },
+      },
+      rangeLoading: false,
+      rangeError: "",
       hoverIndex: null,
     };
   } catch (error) {
@@ -1349,6 +1873,10 @@ async function openStockDetail(symbol) {
       loading: false,
       error: error?.message || t("detail.loadFailed"),
       data: null,
+      rangeKey: DEFAULT_DETAIL_RANGE,
+      rangeCache: {},
+      rangeLoading: false,
+      rangeError: "",
       hoverIndex: null,
     };
   }
@@ -1361,8 +1889,51 @@ function closeDetailModal() {
     loading: false,
     error: "",
     data: null,
+    rangeKey: DEFAULT_DETAIL_RANGE,
+    rangeCache: {},
+    rangeLoading: false,
+    rangeError: "",
     hoverIndex: null,
   };
+  renderDetailModal();
+}
+
+async function switchDetailRange(rangeKey) {
+  if (!state.detail.symbol || !state.detail.data) return;
+  const range = getDetailRangeConfig(rangeKey);
+  if (state.detail.rangeKey === range.key && !state.detail.rangeError) return;
+
+  state.detail.rangeKey = range.key;
+  state.detail.hoverIndex = null;
+  state.detail.rangeError = "";
+
+  if (state.detail.rangeCache[range.key]) {
+    state.detail.rangeLoading = false;
+    renderDetailModal();
+    return;
+  }
+
+  state.detail.rangeLoading = true;
+  renderDetailModal();
+  try {
+    const stock = findStock(state.detail.symbol) || {
+      symbol: state.detail.data.symbol,
+      name: state.detail.data.name,
+      secid: state.detail.data.secid,
+    };
+    const rangeData = await fetchDetailRange(stock, range.key);
+    if (!state.detail.symbol || state.detail.rangeKey !== range.key) return;
+    state.detail.rangeCache = {
+      ...state.detail.rangeCache,
+      [range.key]: rangeData,
+    };
+    state.detail.rangeLoading = false;
+    state.detail.rangeError = "";
+  } catch (error) {
+    if (!state.detail.symbol || state.detail.rangeKey !== range.key) return;
+    state.detail.rangeLoading = false;
+    state.detail.rangeError = error?.message || t("detail.loadFailed");
+  }
   renderDetailModal();
 }
 
@@ -2024,6 +2595,12 @@ function bindModal() {
   });
 
   detailModalEl.addEventListener("click", (e) => {
+    const rangeBtn = e.target.closest("button[data-detail-range]");
+    if (rangeBtn) {
+      switchDetailRange(rangeBtn.dataset.detailRange);
+      return;
+    }
+
     if (e.target.dataset.closeDetailModal === "true" || e.target.id === "close-detail-modal") {
       closeDetailModal();
     }

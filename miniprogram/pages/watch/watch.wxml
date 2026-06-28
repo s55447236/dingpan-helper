@@ -1,0 +1,92 @@
+<view class="page watch-page">
+  <view class="hero">
+    <view>
+      <view class="title">自选</view>
+      <view class="sub">实时行情 · 价格提醒 · 快速搜索</view>
+    </view>
+    <button class="ghost-btn" bindtap="refreshQuotes">刷新</button>
+  </view>
+
+  <view class="card indexes-card">
+    <view class="indexes">
+      <block wx:for="{{indexes}}" wx:key="symbol">
+        <view class="index-item">
+          <view class="index-name">{{item.name}}</view>
+          <view class="index-price {{item.changeClass}}">{{item.priceText}}</view>
+          <view class="index-change {{item.changeClass}}">{{item.percentText}}</view>
+        </view>
+      </block>
+    </view>
+    <view class="updated">上次：{{lastUpdatedText}}</view>
+  </view>
+
+  <view class="card search-card">
+    <view class="search-box">
+      <text class="search-icon">⌕</text>
+      <input value="{{searchKeyword}}" placeholder="输入股票代码或名称搜索" bindinput="onSearchInput" confirm-type="search" />
+      <button wx:if="{{searchKeyword}}" class="clear-btn" bindtap="clearSearch">×</button>
+    </view>
+    <view wx:if="{{searchResults.length || searchKeyword}}" class="search-results">
+      <block wx:for="{{searchResults}}" wx:key="symbol">
+        <view class="result-row">
+          <view>
+            <view class="result-name">{{item.name}}</view>
+            <view class="result-meta">
+              <text class="market-badge">{{item.market}}</text>
+              <text>{{item.symbol}}</text>
+            </view>
+          </view>
+          <button wx:if="{{item.watched}}" class="ghost-btn" disabled>已关注</button>
+          <button wx:else class="primary-btn small-btn" data-symbol="{{item.symbol}}" bindtap="addWatch">关注</button>
+        </view>
+      </block>
+      <view wx:if="{{!searchResults.length}}" class="empty">暂无结果</view>
+    </view>
+  </view>
+
+  <view class="card watch-card">
+    <view class="section-head">
+      <view class="section-title">我的关注</view>
+      <view class="count">已关注 {{watchItems.length}} 只</view>
+    </view>
+
+    <block wx:for="{{watchItems}}" wx:key="symbol">
+      <view class="stock-card">
+        <view class="stock-main" data-symbol="{{item.symbol}}" bindtap="showDetail">
+          <view class="stock-info">
+            <view class="stock-name">{{item.name}}</view>
+            <view class="stock-meta">
+              <text class="market-badge">{{item.market}}</text>
+              <text>{{item.symbol}}</text>
+            </view>
+          </view>
+          <view class="quote-box {{item.changeClass}}">
+            <view class="price">{{item.priceText}}</view>
+            <view class="percent">{{item.percentText}}</view>
+          </view>
+        </view>
+
+        <view wx:if="{{item.alerts.length}}" class="alert-row">
+          <block wx:for="{{item.alerts}}" wx:for-item="alert" wx:key="id">
+            <view class="alert-tag {{alert.hit ? 'hit' : ''}}">
+              <text>目标 {{alert.priceText}}</text>
+              <button catchtap="removeAlert" data-symbol="{{item.symbol}}" data-alert-id="{{alert.id}}">×</button>
+            </view>
+          </block>
+        </view>
+
+        <view wx:if="{{activeTargetSymbol === item.symbol}}" class="target-editor">
+          <input type="digit" value="{{targetDraft}}" placeholder="请输入目标价" bindinput="onTargetDraftInput" />
+          <button class="primary-btn small-btn" data-symbol="{{item.symbol}}" bindtap="confirmTarget">确定</button>
+        </view>
+
+        <view class="stock-actions">
+          <button class="ghost-btn" data-symbol="{{item.symbol}}" bindtap="toggleTargetEditor">目标价</button>
+          <button class="ghost-btn danger-btn" data-symbol="{{item.symbol}}" bindtap="removeWatch">移除</button>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{!watchItems.length}}" class="empty">暂无关注，搜索股票后添加</view>
+  </view>
+</view>

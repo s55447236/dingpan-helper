@@ -1,0 +1,86 @@
+<view class="page pray-page">
+  <view class="hero">
+    <view>
+      <view class="title">财神保佑</view>
+      <view class="sub">上香祈福 · 三个供位 · 自选常红</view>
+    </view>
+    <button class="ghost-btn" bindtap="refreshQuotes">刷新</button>
+  </view>
+
+  <view class="card altar-card">
+    <view class="deity-name">{{deity.name}}</view>
+    <view class="deity-stage">
+      <button class="arrow-btn" data-step="-1" bindtap="switchDeity">‹</button>
+      <video
+        wx:if="{{deity.video}}"
+        class="deity-video"
+        src="{{deity.video}}"
+        autoplay="{{videoPlaying}}"
+        muted
+        controls="{{false}}"
+        loop="{{false}}"
+        bindended="onVideoEnded"
+        binderror="onVideoEnded"
+      ></video>
+      <view wx:else class="deity-placeholder">
+        <view class="deity-seal">旺</view>
+        <view class="deity-placeholder-name">{{deity.name}}</view>
+      </view>
+      <button class="arrow-btn" data-step="1" bindtap="switchDeity">›</button>
+    </view>
+
+    <view class="blessing">{{displayedBlessing}}</view>
+
+    <view class="offering-row">
+      <block wx:for="{{fruits}}" wx:key="index">
+        <view wx:if="{{item}}" class="offering-slot filled" data-index="{{index}}" bindtap="openSearch">
+          <button class="slot-remove" catchtap="removeOffering" data-index="{{index}}">×</button>
+          <view class="slot-name">{{item.name}}</view>
+          <view class="slot-meta">
+            <text class="market-badge">{{item.market}}</text>
+            <text>{{item.symbol}}</text>
+          </view>
+          <view class="slot-quote {{item.changeClass}}">
+            <text>{{item.priceText}}</text>
+            <text>{{item.percentText}}</text>
+          </view>
+        </view>
+        <button wx:else class="offering-slot empty-slot" data-index="{{index}}" bindtap="openSearch">+</button>
+      </block>
+    </view>
+
+    <image class="burner" src="/assets/incense-burner.png" mode="aspectFit"></image>
+    <button class="primary-btn incense-btn" bindtap="burnIncense">上香</button>
+    <view class="incense-count">累计香火：{{incenseCount}} 次</view>
+  </view>
+
+  <view wx:if="{{searchOpen}}" class="overlay" catchtouchmove="noop">
+    <view class="overlay-bg" bindtap="closeSearch"></view>
+    <view class="search-panel">
+      <view class="panel-head">
+        <view class="panel-title">搜索股票上供</view>
+        <button class="close-btn" bindtap="closeSearch">×</button>
+      </view>
+      <view class="search-box">
+        <text class="search-icon">⌕</text>
+        <input value="{{searchKeyword}}" placeholder="输入股票代码或名称" bindinput="onSearchInput" confirm-type="search" />
+      </view>
+      <view class="result-list">
+        <block wx:for="{{searchResults}}" wx:key="symbol">
+          <view class="result-row">
+            <view>
+              <view class="result-name">{{item.name}}</view>
+              <view class="result-meta">
+                <text class="market-badge">{{item.market}}</text>
+                <text>{{item.symbol}}</text>
+              </view>
+            </view>
+            <button wx:if="{{item.offered}}" class="ghost-btn" disabled>已上供</button>
+            <button wx:else class="primary-btn small-btn" data-symbol="{{item.symbol}}" bindtap="addOffering">上供</button>
+          </view>
+        </block>
+        <view wx:if="{{!searchResults.length}}" class="empty">暂无关注股票，直接搜索也可以上供</view>
+      </view>
+    </view>
+  </view>
+</view>

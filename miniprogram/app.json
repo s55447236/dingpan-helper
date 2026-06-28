@@ -1,0 +1,29 @@
+{
+  "pages": [
+    "pages/pray/pray",
+    "pages/watch/watch"
+  ],
+  "window": {
+    "navigationBarTitleText": "股票神器Stocks",
+    "navigationBarBackgroundColor": "#f7f8fb",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f6fa"
+  },
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#dc2626",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/pray/pray",
+        "text": "财神保佑"
+      },
+      {
+        "pagePath": "pages/watch/watch",
+        "text": "自选"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}
